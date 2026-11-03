@@ -1,0 +1,87 @@
+/* Movimentacoes */
+
+/* Navegacao e totais do mes */
+.movement-period-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 8px 0 14px;
+}
+
+.month-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid #e8eeea;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.month-switcher .icon-button {
+  width: 30px;
+  height: 30px;
+}
+
+.month-switcher input {
+  min-width: 145px;
+  height: 30px;
+  border: 0;
+  outline: 0;
+  color: #39473f;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.movement-period-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: #849188;
+  font-size: 10px;
+}
+
+.movement-period-totals span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.movement-period-totals strong {
+  color: #334139;
+  font-size: 11px;
+}
+
+/* Filtros do historico */
+.movement-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.movement-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 8px;
+  color: #829087;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.movement-tabs button.active {
+  color: #147859;
+  background: #e8f5ef;
+}
+
+.movement-tabs button span {
+  opacity: .75;
+  font-size: 9px;
+}

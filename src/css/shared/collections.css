@@ -1,0 +1,162 @@
+/* Componentes compartilhados de contas, cartoes, planejamento e metas. */
+
+/* Cabecalho, grade e cartoes */
+.collection-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.collection-heading .section-description {
+  margin-bottom: 0;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.collection-card {
+  min-width: 0;
+  padding: 17px;
+}
+
+.collection-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collection-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #178567;
+  background: #e7f5ed;
+}
+
+/* Identidade das instituicoes financeiras */
+.bank-logo-image {
+  display: block;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  object-fit: contain;
+}
+
+.bank-logo-fallback {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  color: #178567;
+  background: #e7f5ed;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.custom-bank-logo {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 16px;
+}
+
+.collection-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.collection-title {
+  display: block;
+  overflow: hidden;
+  margin-top: 15px;
+  color: #354139;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.collection-subtitle {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: #929e96;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+}
+
+.collection-value {
+  display: block;
+  margin-top: 13px;
+  color: #178567;
+  font: 700 16px "Manrope", sans-serif;
+}
+
+/* Estados vazios e valores de acompanhamento */
+.collection-empty {
+  min-height: 230px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.collection-empty strong {
+  color: #445148;
+  font-size: 12px;
+}
+
+.collection-empty p {
+  color: #929e96;
+  font-size: 10px;
+}
+
+.collection-empty .button-soft {
+  margin-top: 5px;
+}
+
+.goal-progress {
+  height: 6px;
+  overflow: hidden;
+  margin-top: 14px;
+  border-radius: 99px;
+  background: #edf2ee;
+}
+
+.goal-progress span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: #44a783;
+  transition: width .2s ease;
+}
+
+.collection-progress-label {
+  display: block;
+  margin-top: 5px;
+  color: #929e96;
+  font-size: 9px;
+}
+
+.card-payment-button {
+  min-height: 32px;
+  margin-top: 12px;
+  padding: 0 11px;
+  font-size: 9px;
+}
+
+.card-payment-button:disabled,
+.dashboard-pay-card:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}

@@ -1,0 +1,21 @@
+/* Estilos comuns carregados antes das páginas. */
+@import "./shared/global.css";
+@import "./shared/layout.css";
+@import "./shared/collections.css";
+@import "./shared/forms.css";
+@import "./shared/responsive.css";
+
+/* Estilos específicos das telas. */
+@import "./pages/dashboard.css";
+@import "./pages/categories.css";
+@import "./pages/accounts.css";
+@import "./pages/cards.css";
+@import "./pages/planning.css";
+@import "./pages/goals.css";
+@import "./pages/movements.css";
+@import "./pages/settings.css";
+@import "./pages/auth.css";
+
+/* Tema e ajustes finais sobrescrevem os estilos anteriores. */
+@import "./shared/theme.css";
+@import "./shared/responsive-overrides.css";

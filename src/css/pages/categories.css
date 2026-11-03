@@ -1,0 +1,259 @@
+/* Categorias */
+
+/* Resumo de receitas e despesas */
+.section-page {
+  padding-top: 5px;
+}
+
+.section-page h1 {
+  margin-top: 9px;
+}
+
+.section-description {
+  margin-bottom: 25px;
+}
+
+.category-page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.category-page-heading .section-description {
+  margin-bottom: 0;
+}
+
+.category-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+  margin: 20px 0 15px;
+}
+
+.category-summary > div {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 16px;
+  border: 1px solid #e9efeb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.category-summary > div > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.category-summary strong {
+  color: #2a382f;
+  font: 700 17px "Manrope", sans-serif;
+}
+
+.category-summary small {
+  color: #89958e;
+  font-size: 10px;
+}
+
+.category-summary-icon {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+}
+
+.expense-summary {
+  color: #d77867;
+  background: #fff0ec;
+}
+
+.income-summary {
+  color: #178567;
+  background: #e5f5ed;
+}
+
+/* Abas e lista de categorias */
+.category-panel {
+  overflow: hidden;
+}
+
+.category-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 13px 18px 0;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.category-tabs button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px 12px;
+  border: 0;
+  color: #89958e;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.category-tabs button.active {
+  color: #178567;
+}
+
+.category-tabs button.active::after {
+  position: absolute;
+  right: 9px;
+  bottom: -1px;
+  left: 9px;
+  height: 2px;
+  border-radius: 2px;
+  background: #178567;
+  content: "";
+}
+
+.category-list {
+  padding: 0 18px;
+}
+
+.category-row {
+  min-height: 67px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #f0f3f1;
+}
+
+.category-row:last-child {
+  border-bottom: 0;
+}
+
+.category-row-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: #f0f5f2;
+  font-size: 17px;
+}
+
+.category-row-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.category-row-name {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.category-row-name strong {
+  color: #354139;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.category-row-name span {
+  color: #99a49d;
+  font-size: 9px;
+}
+
+.category-row-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.category-action {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: #829087;
+  background: transparent;
+}
+
+.category-action:hover {
+  color: #178567;
+  background: #edf7f1;
+}
+
+.category-action.delete:hover {
+  color: #cf6959;
+  background: #fff1ed;
+}
+
+.category-empty {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.category-empty strong {
+  color: #445148;
+  font-size: 11px;
+}
+
+.category-empty p, .category-footnote {
+  color: #929e96;
+  font-size: 10px;
+}
+
+.category-empty .button-soft {
+  margin-top: 5px;
+}
+
+.category-footnote {
+  margin: 12px 2px 0;
+  line-height: 1.6;
+}
+
+.section-panel {
+  padding: 20px;
+}
+
+.section-panel .panel-heading {
+  margin-bottom: 13px;
+}
+
+.section-panel .empty-state {
+  min-height: 170px;
+}
+
+.coming-soon-panel {
+  max-width: 610px;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 35px;
+  text-align: center;
+}
+
+.coming-soon-panel h2 {
+  margin-top: 16px;
+  font: 700 17px "Manrope", sans-serif;
+}
+
+.coming-soon-panel p {
+  max-width: 360px;
+  margin-top: 8px;
+  color: #89958e;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.coming-soon-panel .button-soft {
+  margin-top: 18px;
+}

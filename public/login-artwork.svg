@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1097 617" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="base" x2="1" y2="1">
+      <stop stop-color="#07553e"/>
+      <stop offset=".48" stop-color="#003a2d"/>
+      <stop offset="1" stop-color="#00271f"/>
+    </linearGradient>
+    <linearGradient id="waveA" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#61d576"/>
+      <stop offset=".52" stop-color="#18a969"/>
+      <stop offset="1" stop-color="#087b53"/>
+    </linearGradient>
+    <linearGradient id="waveB" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#02664c"/>
+      <stop offset="1" stop-color="#002e25"/>
+    </linearGradient>
+    <linearGradient id="bottom" x1="0" x2="1">
+      <stop stop-color="#00392e"/>
+      <stop offset=".56" stop-color="#005c42"/>
+      <stop offset="1" stop-color="#73e88b"/>
+    </linearGradient>
+    <linearGradient id="glass" x2="1" y2="1">
+      <stop stop-color="#0b9468" stop-opacity=".7"/>
+      <stop offset="1" stop-color="#00cb87" stop-opacity=".18"/>
+    </linearGradient>
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="13"/>
+    </filter>
+  </defs>
+  <rect width="1097" height="617" fill="url(#base)"/>
+
+  <!-- Large flowing bands establish the original green backdrop. -->
+  <path d="M0 0h649C585 93 523 134 439 157 320 190 265 236 210 337 158 432 85 453 0 426Z" fill="#002c25"/>
+  <path d="M0 0h116C68 27 37 67 31 130L0 166Z" fill="url(#waveA)"/>
+  <path d="M651 0h307c-49 61-106 102-183 131-68 25-122 65-176 128-7-91 19-177 52-259Z" fill="#006342" opacity=".72"/>
+  <path d="M959 0h138v277c-67-36-115-94-138-169-12-40-12-74 0-108Z" fill="#087e50"/>
+  <path d="M0 420c97-18 169 4 238 48 78 49 126 78 222 70 115-10 166-91 278-85 112 6 169 79 261 78 38 0 70-12 98-30v116H0Z" fill="url(#bottom)"/>
+  <path d="M0 464c111-41 190-4 264 50 76 56 135 75 225 55 96-22 150-92 255-77 115 16 153 94 253 78 45-7 77-30 100-53v100H0Z" fill="#00392e" opacity=".92"/>
+  <path d="M1040 389c-25-57-17-111 15-149 14-17 28-28 42-35v259c-24-20-43-44-57-75Z" fill="#45d17a" opacity=".48"/>
+
+  <!-- Subtle depth and light flecks. -->
+  <ellipse cx="273" cy="505" rx="230" ry="40" fill="#21ce83" opacity=".16" filter="url(#softGlow)"/>
+  <g fill="#72f5a8" opacity=".9">
+    <path d="m166 171 3 10 10 3-10 3-3 10-3-10-10-3 10-3Z"/>
+    <path d="m459 300 4 13 13 4-13 4-4 13-4-13-13-4 13-4Z"/>
+    <path d="m79 366 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/>
+    <path d="m550 487 3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/>
+    <circle cx="595" cy="166" r="3"/>
+    <circle cx="112" cy="344" r="2"/>
+  </g>
+
+  <!-- Finance symbols float around the mascot. -->
+  <g transform="rotate(-5 76 185)">
+    <rect x="41" y="147" width="70" height="72" rx="17" fill="url(#glass)" stroke="#59e9a5" stroke-opacity=".45" stroke-width="2"/>
+    <path d="M59 169h28a5 5 0 0 1 5 5v4H65a6 6 0 0 0 0 12h27v8a5 5 0 0 1-5 5H59a6 6 0 0 1-6-6v-22a6 6 0 0 1 6-6Z" fill="#90f7bb"/>
+    <path d="M85 169v-7l-21 4" fill="none" stroke="#90f7bb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="84" cy="184" r="2" fill="#08734e"/>
+  </g>
+  <g transform="rotate(-8 496 224)">
+    <rect x="460" y="184" width="76" height="82" rx="18" fill="url(#glass)" stroke="#59e9a5" stroke-opacity=".45" stroke-width="2"/>
+    <path d="M480 244v-16h10v16m5 0v-29h10v29m5 0v-39h10v39" fill="#8af5b5"/>
+  </g>
+  <path d="m488 167 40-24 18 12 23-38m-11 0 11-1 1 12" fill="none" stroke="#00ba79" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity=".62"/>
+  <g transform="rotate(8 530 342)">
+    <rect x="493" y="306" width="74" height="73" rx="18" fill="url(#glass)" stroke="#59e9a5" stroke-opacity=".4" stroke-width="2"/>
+    <circle cx="530" cy="342" r="20" fill="none" stroke="#8bf6b7" stroke-width="5"/>
+    <circle cx="530" cy="342" r="11" fill="none" stroke="#8bf6b7" stroke-width="4"/>
+    <path d="m527 345 28-25m-11 1 11-1-1 11" fill="none" stroke="#8bf6b7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Brand sparkle at the far edge of the card. -->
+  <g fill="#6ef0a2">
+    <path d="m1004 35 5-15 5 15 15 5-15 5-5 15-5-15-15-5Z"/>
+    <path d="m1035 43 12-15m-4 24 17-8m-23 23 18 1" fill="none" stroke="#6ef0a2" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>
