@@ -148,7 +148,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   const creditLimit = finance.cards.reduce((total, card) => total + card.creditLimit, 0);
   const creditUtilization = creditLimit > 0 ? creditUsage / creditLimit : 0;
   const dashboardTransactions = finance.transactions.filter((item) =>
-    item.transaction_date.startsWith(today.slice(0, 7)) && !item.cashBoxKind,
+    item.transaction_date.startsWith(today.slice(0, 7)),
   );
   const selectedTransaction = finance.transactions.find((item) => item.id === selectedTransactionId) ?? null;
   const notifications = useMemo((): FinanceNotification[] => {

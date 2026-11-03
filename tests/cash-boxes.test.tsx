@@ -1,8 +1,10 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CashBoxesPage } from "../src/pages/CashBoxesPage";
+import { DashboardPage } from "../src/pages/DashboardPage";
 import { MovementsPage } from "../src/pages/MovementsPage";
 import type { Account, CashBox, Transaction } from "../src/types/finance";
+import { calculateTotals } from "../src/utils/finance";
 
 afterEach(cleanup);
 
@@ -106,6 +108,44 @@ describe("caixinhas", () => {
     fireEvent.click(screen.getByRole("tab", { name: /Despesas/ }));
     expect(screen.queryByText("Aporte: Viagem")).toBeNull();
     expect(screen.queryByText("Retirada: Viagem")).toBeNull();
+  });
+
+  it("mostra o aporte nas últimas movimentações junto com o saldo já debitado", () => {
+    const deposit: Transaction = {
+      ...existingDeposit,
+      transaction_date: new Date().toISOString().slice(0, 10),
+    };
+    const transactions = [deposit];
+    render(
+      <DashboardPage
+        transactions={transactions}
+        totals={calculateTotals(transactions, [account])}
+        projectedBalance={375}
+        monthlyBudget={null}
+        showValues
+        mascotExpression="encouragement"
+        mascotMessage="Vamos acompanhar seu saldo."
+        cards={[]}
+        customBanks={[]}
+        goals={[]}
+        dashboardWidgets={[]}
+        onToggleValues={vi.fn()}
+        onAdd={vi.fn()}
+        onAddGoal={vi.fn()}
+        onSetBudget={vi.fn()}
+        onNavigate={vi.fn()}
+        onOpenMovements={vi.fn()}
+        onPayCard={vi.fn()}
+        cloudAccount
+        onOpenTransaction={vi.fn()}
+        onOpenTransactions={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Últimas movimentações")).toBeTruthy();
+    expect(screen.getByText("Aporte: Viagem")).toBeTruthy();
+    expect(screen.getByText(/125,00/)).toBeTruthy();
+    expect(calculateTotals(transactions, [account]).balance).toBe(375);
   });
 
   it("solicita a migration no Supabase sem desativar as outras telas", () => {
