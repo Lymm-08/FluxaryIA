@@ -177,6 +177,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       await queues.current["categorias"];
       await queues.current["contas"];
       await queues.current["cartões"];
+      await queues.current["caixinhas"];
       await syncRows(
         rows,
         async () => (await client.from("transactions").upsert(rows, { onConflict: "user_id,id" })).error,

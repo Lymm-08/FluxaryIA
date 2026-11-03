@@ -1,0 +1,231 @@
+/* Seletores e campos de lancamento */
+
+/* Caixa de seleção Fluxary: menu consistente entre navegadores e plataformas. */
+.styled-select {
+  position: relative;
+  width: 100%;
+}
+
+.styled-select > input[type="hidden"] {
+  display: none;
+}
+
+.styled-select-trigger {
+  width: 100%;
+  min-height: 41px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border: 1px solid #dce8e1;
+  border-radius: 10px;
+  color: #35463c;
+  background: linear-gradient(180deg, #fff, #f8fbf9);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px #183e2b08;
+  transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+.styled-select-trigger:hover,
+.styled-select-trigger-open,
+.styled-select-trigger:focus-visible {
+  border-color: #69b597;
+  outline: 0;
+  background: #fff;
+  box-shadow: 0 0 0 3px #17856716;
+}
+
+.styled-select-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.styled-select-trigger > svg {
+  flex: 0 0 16px;
+  color: #178567;
+  transition: transform .16s ease;
+}
+
+.styled-select-trigger-open > svg {
+  transform: rotate(180deg);
+}
+
+.styled-select-menu {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  display: grid;
+  gap: 3px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 5px;
+  border: 1px solid #dce8e1;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 30px #152b1f24;
+  animation: select-menu-in .14s ease-out;
+}
+
+.styled-select-option {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #506057;
+  background: transparent;
+  text-align: left;
+  font-size: 11px;
+  transition: color .14s ease, background .14s ease, border-color .14s ease;
+}
+
+.styled-select-option:hover,
+.styled-select-option-active {
+  border-color: #e2f0e8;
+  color: #176f53;
+  background: #f3faf6;
+}
+
+.styled-select-option-selected {
+  color: #137653;
+  background: #eaf6ef;
+  font-weight: 700;
+}
+
+.styled-select-option-selected > svg {
+  color: #178567;
+}
+
+.styled-select-option:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+@keyframes select-menu-in {
+  from { opacity:  0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.budget-form-copy {
+  margin: -7px 0 17px;
+  color: #849188;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 8px;
+}
+
+.transaction-type-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: -4px 0 18px;
+  padding: 4px;
+  border-radius: 11px;
+  background: #f3f6f4;
+}
+
+.transaction-type-switch button {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #859189;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.transaction-type-switch button.selected {
+  border-color: #e7eeea;
+  background: #fff;
+  box-shadow: 0 2px 7px #1a59400c;
+}
+
+.transaction-type-switch button.expense-selected {
+  color: #ce7462;
+}
+
+.transaction-type-switch button.income-selected {
+  color: #178567;
+}
+
+.payment-method-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+  margin-top: -7px;
+}
+
+.card-form-hint {
+  margin: -5px 0 14px;
+  color: #89958e;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.card-payment-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 17px;
+  padding: 11px;
+  border: 1px solid #e8efeb;
+  border-radius: 10px;
+  background: #f7faf8;
+}
+
+.card-payment-summary > span {
+  display: grid;
+  gap: 4px;
+  color: #3e4c43;
+  font-size: 10px;
+}
+
+.card-payment-summary small,
+.card-payment-note {
+  color: #89958e;
+  font-size: 9px;
+}
+
+.card-payment-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 15px;
+}
+
+.card-payment-note svg {
+  color: #178567;
+}
+
+.card-payment-error {
+  margin: 0 0 14px;
+  color: #b42318;
+  font-size: 11px;
+}

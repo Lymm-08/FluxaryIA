@@ -55,7 +55,7 @@ create index if not exists transactions_user_cash_box_idx
   on public.transactions (user_id, cash_box_id, transaction_date desc)
   where cash_box_id is not null;
 
--- Converte aportes existentes sem recriá-los se a migration for reaplicada.
+-- Converte transferências existentes sem recriá-las se a migration for reaplicada.
 insert into public.transactions (
   id,
   user_id,
@@ -78,18 +78,21 @@ insert into public.transactions (
 select
   'cash-box-deposit:' || deposit.id,
   deposit.user_id,
-  'Aporte: ' || cash_box.name,
+  case
+    when deposit.direction = 'withdrawal' then 'Retirada: ' || cash_box.name
+    else 'Aporte: ' || cash_box.name
+  end,
   'Caixinha',
   null,
   deposit.created_at::date,
   deposit.amount,
-  'expense',
+  case when deposit.direction = 'withdrawal' then 'income' else 'expense' end,
   true,
   deposit.account_id,
   null,
   null,
   deposit.cash_box_id,
-  'deposit',
+  case when deposit.direction = 'withdrawal' then 'withdrawal' else 'deposit' end,
   null,
   null,
   null
@@ -106,5 +109,5 @@ where exists (
   where transaction.user_id = deposit.user_id
     and transaction.id = 'cash-box-deposit:' || deposit.id
     and transaction.cash_box_id = deposit.cash_box_id
-    and transaction.cash_box_kind = 'deposit'
+    and transaction.cash_box_kind = deposit.direction
 );

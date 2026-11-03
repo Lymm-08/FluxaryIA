@@ -148,6 +148,7 @@
   font-size: 9px;
 }
 
+/* Aportes e retiradas das caixinhas */
 .cash-box-card > .collection-icon {
   margin-bottom: 0;
 }
@@ -179,6 +180,7 @@
   overflow-wrap: anywhere;
 }
 
+/* Pagamento de faturas */
 .card-payment-button {
   min-height: 32px;
   margin-top: 12px;

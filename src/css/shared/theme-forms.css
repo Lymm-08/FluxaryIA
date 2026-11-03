@@ -1,0 +1,169 @@
+/* Tema escuro: formularios e controles */
+
+[data-theme="dark"] .transaction-modal, [data-theme="dark"] .transaction-modal label,
+[data-theme="dark"] .custom-bank-label, [data-theme="dark"] .custom-bank-form > strong,
+[data-theme="dark"] .category-choice-field legend {
+  color: #cbd8d0;
+}
+
+[data-theme="dark"] .transaction-modal input,
+[data-theme="dark"] .settings-password-form input, [data-theme="dark"] .bank-search,
+[data-theme="dark"] .custom-bank-form > input, [data-theme="dark"] .month-switcher input {
+  border-color: #35473d;
+  color: #e1ebe4;
+  background-color: #202c25;
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .transaction-modal input::placeholder,
+[data-theme="dark"] .settings-password-form input::placeholder {
+  color: #84958a;
+}
+
+[data-theme="dark"] .fluxary-calendar-popover,
+[data-theme="dark"] .confirm-dialog {
+  border-color: #35473d;
+  background: #19231e;
+  box-shadow: 0 20px 60px #00000066;
+}
+
+[data-theme="dark"] .fluxary-calendar-heading strong,
+[data-theme="dark"] .confirm-dialog h2 {
+  color: #e6eee9;
+}
+
+[data-theme="dark"] .fluxary-calendar-nav {
+  border-color: #35473d;
+  color: #cbd8d0;
+  background: #202c25;
+}
+
+[data-theme="dark"] .fluxary-calendar-nav:hover {
+  border-color: #4a9b78;
+  color: #b1e8cd;
+  background: #24352c;
+}
+
+[data-theme="dark"] .fluxary-calendar-day {
+  color: #cbd8d0;
+}
+
+[data-theme="dark"] .fluxary-calendar-day:hover {
+  border-color: #426d56;
+  color: #b1e8cd;
+  background: #24352c;
+}
+
+[data-theme="dark"] .fluxary-calendar-day.today {
+  border-color: #4a9b78;
+  color: #a4e5c4;
+}
+
+[data-theme="dark"] .fluxary-calendar-day.selected,
+[data-theme="dark"] .fluxary-calendar-day.selected:hover {
+  border-color: #178567;
+  color: #fff;
+  background: #178567;
+}
+
+[data-theme="dark"] .fluxary-calendar-today {
+  border-color: #35473d;
+  color: #8ed8b2;
+}
+
+[data-theme="dark"] .fluxary-calendar-trigger {
+  color: #8ed8b2;
+  background: #1d3c30;
+}
+
+[data-theme="dark"] .fluxary-calendar-trigger:hover,
+[data-theme="dark"] .fluxary-calendar-trigger[aria-expanded="true"] {
+  color: #fff;
+  background: #178567;
+}
+
+[data-theme="dark"] .confirm-dialog p {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .styled-select-trigger {
+  border-color: #35473d;
+  color: #e1ebe4;
+  background: linear-gradient(180deg, #24332b, #202c25);
+}
+
+[data-theme="dark"] .styled-select-trigger:hover,
+[data-theme="dark"] .styled-select-trigger-open,
+[data-theme="dark"] .styled-select-trigger:focus-visible {
+  border-color: #4a9b78;
+  background: #24352c;
+  box-shadow: 0 0 0 3px #17856728;
+}
+
+[data-theme="dark"] .styled-select-menu {
+  border-color: #35473d;
+  background: #19231e;
+  box-shadow: 0 12px 30px #00000055;
+}
+
+[data-theme="dark"] .styled-select-option {
+  color: #cbd8d0;
+}
+
+[data-theme="dark"] .styled-select-option:hover,
+[data-theme="dark"] .styled-select-option-active {
+  border-color: #35473d;
+  color: #b1e8cd;
+  background: #24352c;
+}
+
+[data-theme="dark"] .styled-select-option-selected {
+  color: #a4e5c4;
+  background: #1d3c30;
+}
+
+[data-theme="dark"] .amount-input-wrap {
+  border-color: #35473d;
+  color: #a7b5ac;
+  background: #202c25;
+}
+
+[data-theme="dark"] .amount-input-wrap input,
+[data-theme="dark"] .transaction-modal .amount-input-wrap input {
+  color: #e6eee9;
+}
+
+[data-theme="dark"] .transaction-type-switch,
+[data-theme="dark"] .bank-picker-panel,
+[data-theme="dark"] .custom-bank-form {
+  border-color: #35473d;
+  background: #202c25;
+}
+
+[data-theme="dark"] .transaction-type-switch button {
+  color: #a7b5ac;
+}
+
+[data-theme="dark"] .transaction-type-switch button.selected,
+[data-theme="dark"] .transaction-category-option {
+  border-color: #35473d;
+  color: #cbd8d0;
+  background: #19231e;
+}
+
+[data-theme="dark"] .transaction-category-option.active {
+  border-color: #4a9b78;
+  color: #9ce0bd;
+  background: #1d3c30;
+}
+
+[data-theme="dark"] .balance-actions button {
+  border-color: #35473d;
+  color: #9ce0bd;
+  background: #1d3027;
+}
+
+[data-theme="dark"] .balance-actions button:hover {
+  border-color: #4a9b78;
+  background: #244333;
+}

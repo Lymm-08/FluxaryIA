@@ -1,0 +1,159 @@
+/* Seletor de data e calendario */
+
+/* Campo de data e calendário Fluxary */
+.fluxary-date-picker {
+  position: relative;
+  width: 100%;
+}
+
+.fluxary-date-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.fluxary-date-control > input {
+  padding-right: 45px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.fluxary-calendar-trigger {
+  position: absolute;
+  right: 4px;
+  width: 34px;
+  height: 33px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: #178567;
+  background: #eaf5ef;
+}
+
+.fluxary-calendar-trigger:hover,
+.fluxary-calendar-trigger[aria-expanded="true"] {
+  color: #fff;
+  background: #178567;
+}
+
+.fluxary-calendar-popover {
+  position: fixed;
+  z-index: 80;
+  width: min(292px, calc(100vw - 48px));
+  padding: 14px;
+  border: 1px solid #e2ece5;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 16px 42px #1a33251f;
+  animation: calendar-in .14s ease-out;
+}
+
+.fluxary-calendar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.fluxary-calendar-heading strong {
+  color: #304137;
+  font: 700 13px "Manrope", sans-serif;
+  text-transform: capitalize;
+}
+
+.fluxary-calendar-nav {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e8efea;
+  border-radius: 9px;
+  color: #52665a;
+  background: #f8fbf9;
+}
+
+.fluxary-calendar-nav:hover {
+  border-color: #b6d9c8;
+  color: #147859;
+  background: #edf7f1;
+}
+
+.fluxary-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.fluxary-calendar-weekdays {
+  margin-bottom: 5px;
+}
+
+.fluxary-calendar-weekdays span {
+  display: grid;
+  height: 25px;
+  place-items: center;
+  color: #9aa79f;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.fluxary-calendar-day {
+  width: 31px;
+  height: 31px;
+  justify-self: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: #44554b;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fluxary-calendar-day:hover {
+  border-color: #cce5d8;
+  color: #147859;
+  background: #eef7f1;
+}
+
+.fluxary-calendar-day.today {
+  border-color: #a7d3bd;
+  color: #147859;
+}
+
+.fluxary-calendar-day.selected,
+.fluxary-calendar-day.selected:hover {
+  border-color: #178567;
+  color: #fff;
+  background: #178567;
+  box-shadow: 0 3px 8px #17856738;
+}
+
+.fluxary-calendar-today {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  border: 0;
+  border-top: 1px solid #edf2ee;
+  color: #147859;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.scheduled-transaction-hint {
+  margin: -4px 0 0;
+  padding: 9px 11px;
+  border: 1px solid #d6eadd;
+  border-radius: 10px;
+  color: #287452;
+  background: #f2faf5;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@keyframes calendar-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

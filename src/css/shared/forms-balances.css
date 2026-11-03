@@ -1,0 +1,219 @@
+/* Ajustes de saldo e planejamento */
+
+/* Atalhos para cadastrar ou ajustar o saldo junto do lancamento */
+.balance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: -8px 0 16px;
+}
+
+.balance-actions button {
+  min-height: 31px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid #dcebe3;
+  border-radius: 8px;
+  color: #187b5f;
+  background: #f3faf6;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.balance-actions button:hover {
+  border-color: #9dcbb5;
+  background: #e9f5ef;
+}
+
+/* Formulario de saldo inicial e ajuste */
+.balance-modal-copy {
+  margin: -7px 0 17px;
+  color: #849188;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.balance-modal-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  color: #829087;
+  font-size: 9px;
+}
+
+.balance-modal-note svg {
+  flex: 0 0 15px;
+  color: #178567;
+}
+
+.card-limit-preview {
+  display: grid;
+  gap: 5px;
+  padding: 10px 11px;
+  border: 1px solid #dceee4;
+  border-radius: 10px;
+  color: #68766d;
+  background: #f5faf7;
+  font-size: 9px;
+}
+
+.card-limit-preview strong {
+  color: #17684f;
+  font-weight: 700;
+}
+
+.card-limit-preview small {
+  color: #ae5946;
+  font-size: 9px;
+}
+
+.card-limit-preview-over {
+  border-color: #f0d2c8;
+  background: #fff5f1;
+}
+
+.plan-category-options {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.plan-category-row {
+  display: grid;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid #e6ece8;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.plan-category-row-selected {
+  border-color: #b7ddca;
+  background: #f7fbf8;
+}
+
+.plan-category-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5a51;
+  font-size: 10px;
+}
+
+.plan-category-choice input {
+  accent-color: #178567;
+}
+
+.plan-category-limit {
+  display: grid;
+  gap: 5px;
+  color: #87958c;
+  font-size: 9px;
+}
+
+.plan-category-limit input {
+  width: 100%;
+}
+
+.transaction-modal .amount-field {
+  margin-bottom: 17px;
+}
+
+.amount-input-wrap {
+  height: 55px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  border: 1px solid #e1e9e4;
+  border-radius: 10px;
+  color: #9aa59e;
+  background: #fbfcfb;
+}
+
+.amount-input-wrap:focus-within {
+  border-color: #52a98a;
+  box-shadow: 0 0 0 3px #17856715;
+}
+
+.amount-input-wrap > span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.transaction-modal .amount-input-wrap input {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: #29372f;
+  background: transparent;
+  font: 700 20px "Manrope", sans-serif;
+}
+
+.transaction-modal .amount-input-wrap input:focus {
+  border: 0;
+  box-shadow: none;
+}
+
+.category-picker-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 9px;
+  color: #56635b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.category-picker-heading .text-button {
+  font-size: 9px;
+}
+
+.transaction-category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.transaction-category-option {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 9px 5px;
+  overflow: hidden;
+  border: 1px solid #e9efeb;
+  border-radius: 10px;
+  color: #66736b;
+  background: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+}
+
+.transaction-category-option.active {
+  border-color: #68b495;
+  color: #147859;
+  background: #f1f8f4;
+  box-shadow: 0 0 0 2px #17856712;
+}
+
+.transaction-category-option > span {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 15px;
+}
+
+.transaction-date-row {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -1,0 +1,189 @@
+/* Tema escuro: componentes e indicadores */
+
+/* Cores de icones e estados vazios */
+[data-theme="dark"] .empty-icon, [data-theme="dark"] .goal-illustration,
+[data-theme="dark"] .collection-icon, [data-theme="dark"] .settings-icon,
+[data-theme="dark"] .round-add, [data-theme="dark"] .category-row-icon,
+[data-theme="dark"] .category-summary-icon, [data-theme="dark"] .metric-icon.green,
+[data-theme="dark"] .metric-icon.coral, [data-theme="dark"] .metric-icon.purple {
+  background-color: #24352c;
+}
+
+/* Texto de botoes e componentes compartilhados */
+[data-theme="dark"] .empty-state strong, [data-theme="dark"] .category-empty strong,
+[data-theme="dark"] .collection-empty strong, [data-theme="dark"] .profile-text strong,
+[data-theme="dark"] .custom-bank-form > strong {
+  color: #dce8e0;
+}
+
+[data-theme="dark"] .button-primary {
+  color: #f2fff8;
+  background: #17805f;
+  box-shadow: 0 4px 12px #00000030;
+}
+
+[data-theme="dark"] .button-primary:hover {
+  background: #209a73;
+}
+
+[data-theme="dark"] .icon-button, [data-theme="dark"] .category-action {
+  color: #a7b5ac;
+}
+
+[data-theme="dark"] .icon-button:hover, [data-theme="dark"] .category-action:hover {
+  background: #24352c;
+}
+
+[data-theme="dark"] .button-secondary, [data-theme="dark"] .bank-picker-selected, [data-theme="dark"] .bank-option,
+[data-theme="dark"] .button-soft, [data-theme="dark"] .round-add,
+[data-theme="dark"] .custom-bank-trigger, [data-theme="dark"] .bank-no-results {
+  border-color: #35473d;
+  color: #e1ebe4;
+  background: #202c25;
+}
+
+[data-theme="dark"] .button-secondary:hover, [data-theme="dark"] .button-soft:hover {
+  border-color: #4a9b78;
+  color: #effff7;
+  background: #2a4035;
+}
+
+[data-theme="dark"] .text-button, [data-theme="dark"] .budget-inline-button,
+[data-theme="dark"] .custom-bank-trigger {
+  color: #83d6ae;
+}
+
+[data-theme="dark"] .button-soft {
+  color: #9ce0bd;
+}
+
+[data-theme="dark"] .transaction-modal .button-secondary,
+[data-theme="dark"] .custom-bank-actions .button-secondary {
+  color: #dce8e0;
+}
+
+[data-theme="dark"] .bank-picker-selected, [data-theme="dark"] .bank-option,
+[data-theme="dark"] .custom-bank-form, [data-theme="dark"] .button-secondary {
+  border-color: #35473d;
+}
+
+[data-theme="dark"] .custom-bank-trigger {
+  border-top-color: #35473d;
+}
+
+[data-theme="dark"] .bank-picker-panel {
+  border-color: #35473d;
+  background: #19231e;
+}
+
+[data-theme="dark"] .bank-option:hover, [data-theme="dark"] .bank-option.selected {
+  background: #1d3c30;
+}
+
+/* Abas de categorias, filtros e avisos */
+[data-theme="dark"] .category-tabs {
+  border-color: #2b3b33;
+}
+
+[data-theme="dark"] .category-row {
+  border-color: #2b3b33;
+}
+
+[data-theme="dark"] .category-tabs button {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .category-tabs button.active {
+  color: #7cdbb4;
+}
+
+[data-theme="dark"] .movement-tabs button.active {
+  color: #7cdbb4;
+  background: #1d3c30;
+}
+
+[data-theme="dark"] .month-switcher input {
+  color: #e6eee9;
+}
+
+[data-theme="dark"] .section-panel .empty-state {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .notice {
+  border-color: #704b3f;
+  color: #f0b5a2;
+  background: #382720;
+}
+
+[data-theme="dark"] .auth-message,
+[data-theme="dark"] .auth-feedback-error {
+  color: #f0b5a2;
+  border-color: #634033;
+  background: #382720;
+}
+
+[data-theme="dark"] .auth-success,
+[data-theme="dark"] .auth-feedback-success {
+  color: #9ce0bd;
+  border-color: #315a46;
+  background: #1d3c30;
+}
+
+/* Planejamento mensal e metas */
+[data-theme="dark"] .planning-summary-heading h2,
+[data-theme="dark"] .planning-donut strong,
+[data-theme="dark"] .planning-legend-row strong,
+[data-theme="dark"] .planning-summary-total strong,
+[data-theme="dark"] .dashboard-goal-heading {
+  color: #e1ebe4;
+}
+
+[data-theme="dark"] .planning-month-label,
+[data-theme="dark"] .planning-donut small,
+[data-theme="dark"] .planning-legend-row,
+[data-theme="dark"] .planning-summary-total {
+  color: #a4b2a9;
+}
+
+[data-theme="dark"] .planning-donut > div {
+  background: #202c25;
+}
+
+[data-theme="dark"] .planning-summary-total {
+  border-color: #35473d;
+}
+
+[data-theme="dark"] .card-limit-preview,
+[data-theme="dark"] .plan-category-row {
+  border-color: #35473d;
+  color: #a4b2a9;
+  background: #202c25;
+}
+
+[data-theme="dark"] .card-limit-preview strong {
+  color: #9ce0bd;
+}
+
+[data-theme="dark"] .plan-category-row-selected {
+  border-color: #3c7258;
+}
+
+[data-theme="dark"] .plan-category-choice {
+  color: #d3ded7;
+}
+
+[data-theme="dark"] .dashboard-goal-icon {
+  color: #9ce0bd;
+  background: #294a38;
+}
+
+[data-theme="dark"] .avatar {
+  color: #9ce0bd;
+  background: #1d3c30;
+}
+
+[data-theme="dark"] .screen-state {
+  color: #c4d2c9;
+  background: #111a16;
+}

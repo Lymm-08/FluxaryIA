@@ -1,0 +1,12 @@
+/* Modal de categorias */
+
+/* Seletor de categoria */
+.category-modal {
+  width: min(100%, 440px);
+}
+
+.bank-picker {
+  position: relative;
+  display: grid;
+  gap: 7px;
+}

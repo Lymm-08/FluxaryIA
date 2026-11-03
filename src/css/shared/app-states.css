@@ -1,0 +1,40 @@
+/* Estados globais e controles responsivos */
+
+/* Estados globais e navegacao responsiva */
+.screen-state {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #718078;
+  background: #f5f8f6;
+  font-size: 13px;
+}
+
+.mobile-backdrop {
+  display: none;
+}
+
+/* Erros de carregamento e menu mobile */
+.cloud-error-state {
+  gap: 11px;
+  padding: 24px;
+  text-align: center;
+}
+
+.cloud-error-state strong {
+  color: #a64c3c;
+}
+
+.cloud-error-state span {
+  max-width: 560px;
+  overflow-wrap: anywhere;
+}
+
+.mobile-menu-icon {
+  display: none;
+}
+
+.desktop-sidebar-icon {
+  display: grid;
+  place-items: center;
+}

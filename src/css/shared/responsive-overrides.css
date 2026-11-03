@@ -1,5 +1,6 @@
-/* Sobrescritas de responsividade para menu, autenticacao e preferencias. */
+/* Ajustes finais responsivos aplicados depois dos estilos base. */
 
+/* Menu lateral recolhido em telas maiores */
 @media (min-width: 821px) {
   .app-shell.app-shell-collapsed > .sidebar {
     display: none;
@@ -12,6 +13,7 @@
   }
 }
 
+/* Navegacao e autenticacao em telas menores */
 @media (max-width: 820px) {
   .mobile-menu-icon {
     display: block;
@@ -167,6 +169,7 @@
   }
 }
 
+/* Ajustes compactos para telefones */
 @media (max-width: 520px) {
   .login-artwork {
     height: 265px;

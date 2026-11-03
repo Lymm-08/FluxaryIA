@@ -1,12 +1,24 @@
 /* Estilos comuns carregados antes das páginas. */
 @import "./shared/global.css";
-@import "./shared/layout.css";
+@import "./shared/shell-navigation.css";
+@import "./shared/app-content.css";
+@import "./shared/app-states.css";
 @import "./shared/collections.css";
-@import "./shared/forms.css";
+@import "./shared/forms-modal.css";
+@import "./shared/forms-date-picker.css";
+@import "./shared/forms-confirmation.css";
+@import "./shared/forms-select.css";
+@import "./shared/forms-balances.css";
+@import "./shared/forms-category-modal.css";
+@import "./shared/forms-bank-picker.css";
+@import "./shared/forms-category-options.css";
 @import "./shared/responsive.css";
 
 /* Estilos específicos das telas. */
-@import "./pages/dashboard.css";
+@import "./pages/dashboard-balance.css";
+@import "./pages/dashboard-metrics.css";
+@import "./pages/dashboard-cards.css";
+@import "./pages/dashboard-activity.css";
 @import "./pages/categories.css";
 @import "./pages/accounts.css";
 @import "./pages/cards.css";
@@ -17,5 +29,8 @@
 @import "./pages/auth.css";
 
 /* Tema e ajustes finais sobrescrevem os estilos anteriores. */
-@import "./shared/theme.css";
+@import "./shared/theme-surfaces.css";
+@import "./shared/theme-navigation.css";
+@import "./shared/theme-forms.css";
+@import "./shared/theme-components.css";
 @import "./shared/responsive-overrides.css";

@@ -1,0 +1,109 @@
+/* Tema escuro: superficies e notificacoes */
+
+/* Tema escuro */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #e6eee9;
+  --muted: #9aa9a0;
+  --line: #2b3b33;
+  --white: #19231e;
+  background: #111a16;
+  color: #e6eee9;
+}
+
+[data-theme="dark"] .dashboard-credit-card-heading,
+[data-theme="dark"] .card-payment-summary > span {
+  color: #dce8e0;
+}
+
+[data-theme="dark"] .dashboard-credit-card-heading span,
+[data-theme="dark"] .dashboard-credit-card-main small,
+[data-theme="dark"] .dashboard-card-empty,
+[data-theme="dark"] .card-payment-summary small,
+[data-theme="dark"] .card-payment-note,
+[data-theme="dark"] .card-form-hint {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .card-payment-error {
+  color: #ff9a93;
+}
+
+[data-theme="dark"] .card-payment-summary {
+  border-color: #35473d;
+  background: #202c25;
+}
+
+[data-theme="dark"] body, [data-theme="dark"] .main-content {
+  background: #111a16;
+}
+
+[data-theme="dark"] .sidebar, [data-theme="dark"] .topbar, [data-theme="dark"] .metric-card, [data-theme="dark"] .panel,
+[data-theme="dark"] .category-summary > div, [data-theme="dark"] .collection-card, [data-theme="dark"] .transaction-modal,
+[data-theme="dark"] .month-switcher, [data-theme="dark"] .settings-card, [data-theme="dark"] .category-panel,
+[data-theme="dark"] .bank-picker-panel, [data-theme="dark"] .custom-bank-form {
+  border-color: #2b3b33;
+  background-color: #19231e;
+}
+
+[data-theme="dark"] .topbar {
+  background: #18221dcf;
+}
+
+[data-theme="dark"] .notification-panel {
+  border-color: #35473d;
+  background: #19231e;
+}
+
+[data-theme="dark"] .notification-panel-heading {
+  border-color: #2b3b33;
+}
+
+[data-theme="dark"] .notification-panel .icon-button,
+[data-theme="dark"] .notification-button-open {
+  color: #9ce0bd;
+}
+
+[data-theme="dark"] .notification-panel-heading h2,
+[data-theme="dark"] .notification-empty strong,
+[data-theme="dark"] .finance-notification-content > strong {
+  color: #dce8e0;
+}
+
+[data-theme="dark"] .finance-notification {
+  border-color: #34443a;
+  color: #b7c8bd;
+  background: #1d2b23;
+}
+
+[data-theme="dark"] .finance-notification.danger {
+  border-color: #654139;
+  background: #352521;
+}
+
+[data-theme="dark"] .finance-notification.warning {
+  border-color: #5a4a2d;
+  background: #30291c;
+}
+
+[data-theme="dark"] .finance-notification.success {
+  border-color: #315440;
+  background: #1d3025;
+}
+
+[data-theme="dark"] .finance-notification-content p,
+[data-theme="dark"] .notification-empty,
+[data-theme="dark"] .notification-summary {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .notification-empty {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .scheduled-transaction-hint {
+  border-color: #315440;
+  color: #9cdbb5;
+  background: #1d3025;
+}

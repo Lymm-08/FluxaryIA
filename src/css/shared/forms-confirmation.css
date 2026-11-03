@@ -1,0 +1,70 @@
+/* Confirmacoes e avisos */
+
+/* Confirmações e avisos com a identidade Fluxary */
+.confirm-backdrop {
+  z-index: 100;
+}
+
+.confirm-dialog {
+  width: min(100%, 410px);
+  padding: 25px;
+  border: 1px solid #e5eee8;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px #12241b40;
+  animation: calendar-in .16s ease-out;
+}
+
+.confirm-dialog-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 14px;
+  border-radius: 13px;
+  color: #147859;
+  background: #e8f5ee;
+}
+
+.confirm-dialog-icon.danger {
+  color: #bc654b;
+  background: #fff0e9;
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 8px;
+  color: #2a382f;
+  font: 700 16px "Manrope", sans-serif;
+}
+
+.confirm-dialog p {
+  margin: 0;
+  color: #78867d;
+  font-size: 11px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+
+.confirm-dialog .modal-actions {
+  margin-top: 22px;
+}
+
+.button-danger {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid #c7654a;
+  border-radius: 9px;
+  color: #fff;
+  background: #c7654a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.button-danger:hover {
+  border-color: #ad5038;
+  background: #ad5038;
+}

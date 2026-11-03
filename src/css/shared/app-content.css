@@ -1,188 +1,3 @@
-/* Estrutura e navegacao principal */
-.app-shell {
-  position: relative;
-  display: flex;
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.sidebar {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 20;
-  display: flex;
-  flex: 0 0 252px;
-  flex-direction: column;
-  width: 252px;
-  min-width: 0;
-  min-height: 0;
-  padding: 27px 17px 17px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  background: #fff;
-  border-right: 1px solid #edf1ee;
-  transition: width .24s ease, flex-basis .24s ease, padding .24s ease, transform .24s ease;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  padding: 0 11px;
-  border: 0;
-  color: #25342d;
-  background: transparent;
-  font: 800 22px "Manrope", sans-serif;
-  letter-spacing: -1.2px;
-}
-
-.brand-dot {
-  color: #178567;
-}
-
-.workspace-label, .eyebrow {
-  color: #929e96;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.15px;
-}
-
-.workspace-label {
-  margin: 43px 12px 12px;
-}
-
-.side-nav {
-  display: grid;
-  gap: 4px;
-}
-
-.nav-item {
-  width: 100%;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #7a8780;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  transition: background .2s, color .2s;
-}
-
-.nav-item:hover {
-  background: #f5f8f6;
-  color: #34443b;
-}
-
-.nav-item-active {
-  background: #e8f5ef;
-  color: #147859;
-}
-
-.nav-new {
-  margin-left: auto;
-  color: #188469;
-  font-size: 8px;
-  letter-spacing: .5px;
-}
-
-.sidebar-bottom {
-  margin-top: auto;
-}
-
-.sidebar-account-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.sidebar-account-actions .nav-item {
-  justify-content: center;
-  gap: 7px;
-  padding: 0 7px;
-  white-space: nowrap;
-}
-
-.sidebar-settings-button {
-  min-width: 0;
-}
-
-.sidebar-collapsed {
-  width: 0;
-  flex-basis: 0;
-  padding-right: 0;
-  padding-left: 0;
-  border-right: 0;
-}
-
-.sidebar-collapsed > * {
-  opacity: 0;
-  transition: opacity .12s ease;
-  pointer-events: none;
-}
-
-.sidebar > * {
-  flex-shrink: 0;
-  width: 100%;
-}
-
-.sidebar-collapsed > * {
-  width: 218px;
-}
-
-.profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 0;
-  padding: 15px 3px 1px;
-  border-top: 1px solid #edf1ee;
-}
-
-.avatar {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #187b5f;
-  background: #dcf1e7;
-  font-weight: 700;
-  font-size: 12px;
-}
-
-.profile-text {
-  display: grid;
-  flex: 1;
-  gap: 3px;
-  min-width: 0;
-}
-
-.profile-text strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 11px;
-}
-
-.profile-text span {
-  color: #929e96;
-  font-size: 9px;
-}
-
-.profile > svg {
-  color: #89968e;
-}
-
 /* Barra superior e conteudo das paginas */
 .main-content {
   flex: 0 0 calc(100% - 252px);
@@ -233,6 +48,7 @@
   gap: 10px;
 }
 
+/* Menu de notificacoes e avisos financeiros */
 .notification-menu {
   position: relative;
 }
@@ -393,6 +209,7 @@
   line-height: 1.45;
 }
 
+/* Controles da barra superior e cabecalho das paginas */
 .icon-button {
   position: relative;
   width: 36px;
@@ -446,6 +263,7 @@
   padding: 34px 44px 26px;
 }
 
+/* Titulos, textos e botoes compartilhados */
 .welcome-row {
   display: flex;
   align-items: center;
@@ -519,42 +337,4 @@ h1, h2, p {
 
 .button-soft:hover {
   background: #dff0e7;
-}
-
-/* Estados globais e navegacao responsiva */
-.screen-state {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  color: #718078;
-  background: #f5f8f6;
-  font-size: 13px;
-}
-
-.mobile-backdrop {
-  display: none;
-}
-
-.cloud-error-state {
-  gap: 11px;
-  padding: 24px;
-  text-align: center;
-}
-
-.cloud-error-state strong {
-  color: #a64c3c;
-}
-
-.cloud-error-state span {
-  max-width: 560px;
-  overflow-wrap: anywhere;
-}
-
-.mobile-menu-icon {
-  display: none;
-}
-
-.desktop-sidebar-icon {
-  display: grid;
-  place-items: center;
 }

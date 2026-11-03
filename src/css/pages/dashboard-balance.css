@@ -1,0 +1,154 @@
+/* Visao geral: saldo e mascote */
+
+/* Visao geral */
+
+/* Saldo mensal e mascote */
+
+.balance-banner {
+  min-height: 174px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 25px 31px;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(112deg, #146e57 0%, #148366 56%, #208d6d 100%);
+  box-shadow: 0 12px 25px #126f5517;
+}
+
+.balance-banner::before {
+  content: "";
+  position: absolute;
+  width: 350px;
+  height: 350px;
+  top: -225px;
+  right: 105px;
+  border: 1px solid #ffffff15;
+  border-radius: 50%;
+}
+
+.balance-banner::after {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  bottom: -240px;
+  right: 70px;
+  border: 1px solid #ffffff15;
+  border-radius: 50%;
+}
+
+.balance-main {
+  z-index: 2;
+  position: relative;
+}
+
+.balance-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #d2eae0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8fe1a2;
+}
+
+.visibility-toggle {
+  display: inline-grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  color: #d2eae0;
+  background: transparent;
+}
+
+.balance-value {
+  margin-top: 12px;
+  font: 700 30px "Manrope", sans-serif;
+  letter-spacing: -.8px;
+}
+
+.balance-caption {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: #c4e3d6;
+  font-size: 9px;
+}
+
+.balance-caption strong {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.trend-positive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #c9f0cf;
+  font-weight: 600;
+}
+
+.mascot-companion {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 19px;
+  width: 183px;
+  height: 165px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.mascot-companion-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 5px #0e503b26);
+}
+
+.balance-tip {
+  position: absolute;
+  right: 205px;
+  left: 31px;
+  bottom: 17px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #e1f3ea;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.balance-tip-alert {
+  color: #fff2d6;
+}
+
+.tip-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: grid;
+  place-items: center;
+  color: #175f4b;
+  background: #d0f1d4;
+  border-radius: 50%;
+}
+
+.balance-tip-alert .tip-icon {
+  color: #8b4d18;
+  background: #ffe2a8;
+}

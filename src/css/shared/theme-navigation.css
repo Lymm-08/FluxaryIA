@@ -1,0 +1,94 @@
+/* Tema escuro: navegacao e tipografia */
+
+[data-theme="dark"] .brand, [data-theme="dark"] .breadcrumb strong, [data-theme="dark"] .welcome-row h1,
+[data-theme="dark"] .section-page h1, [data-theme="dark"] .metric-card > strong, [data-theme="dark"] .goal-empty strong,
+[data-theme="dark"] .category-summary strong, [data-theme="dark"] .category-row-name strong,
+[data-theme="dark"] .collection-title, [data-theme="dark"] .settings-card-heading h2,
+[data-theme="dark"] .theme-setting strong, [data-theme="dark"] .movement-period-totals strong {
+  color: #e6eee9;
+}
+
+[data-theme="dark"] .workspace-label, [data-theme="dark"] .breadcrumb, [data-theme="dark"] .welcome-row p,
+[data-theme="dark"] .section-description, [data-theme="dark"] .metric-top, [data-theme="dark"] .goal-empty p,
+[data-theme="dark"] .category-summary small, [data-theme="dark"] .category-row-name span,
+[data-theme="dark"] .collection-subtitle, [data-theme="dark"] .settings-card-heading p,
+[data-theme="dark"] .theme-setting small, [data-theme="dark"] .movement-period-totals,
+[data-theme="dark"] .balance-modal-copy, [data-theme="dark"] .balance-modal-note,
+[data-theme="dark"] .category-footnote, [data-theme="dark"] .collection-progress-label {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .dashboard-widget-note {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .nav-item {
+  color: #a7b5ac;
+}
+
+[data-theme="dark"] .nav-item:hover {
+  color: #e6eee9;
+  background: #24352c;
+}
+
+[data-theme="dark"] .nav-item-active {
+  color: #7cdbb4;
+  background: #1d3c30;
+}
+
+[data-theme="dark"] .profile {
+  border-color: #2b3b33;
+}
+
+[data-theme="dark"] .transaction-row, [data-theme="dark"] .category-row, [data-theme="dark"] .movement-tabs,
+[data-theme="dark"] .theme-setting, [data-theme="dark"] .settings-local-note,
+[data-theme="dark"] .settings-help-item,
+[data-theme="dark"] .category-tabs, [data-theme="dark"] .month-switcher,
+[data-theme="dark"] .dashboard-credit-card, [data-theme="dark"] .dashboard-card-empty {
+  border-color: #2b3b33;
+}
+
+[data-theme="dark"] .settings-help-item summary {
+  color: #cbd8d0;
+}
+
+[data-theme="dark"] .settings-help-item p {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .transaction-description strong, [data-theme="dark"] .transaction-amount,
+[data-theme="dark"] .category-tabs button, [data-theme="dark"] .modal-heading h2 {
+  color: #dce8e0;
+}
+
+[data-theme="dark"] .transaction-row-openable:hover,
+[data-theme="dark"] .transaction-row-openable:focus-visible {
+  background: #202c25;
+}
+
+[data-theme="dark"] .transaction-details-card {
+  border-color: #35473d;
+  background: #202c25;
+}
+
+[data-theme="dark"] .transaction-details-card > div strong,
+[data-theme="dark"] .transaction-details-list dd {
+  color: #dce8e0;
+}
+
+[data-theme="dark"] .transaction-details-card > div span,
+[data-theme="dark"] .transaction-details-list dt {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .transaction-details-list > div {
+  border-color: #2b3b33;
+}
+
+[data-theme="dark"] .cash-box-form-copy {
+  color: #9aa9a0;
+}
+
+[data-theme="dark"] .transaction-description span, [data-theme="dark"] .empty-state, [data-theme="dark"] .category-empty p {
+  color: #9aa9a0;
+}

@@ -1,0 +1,94 @@
+/* Visao geral: limites dos cartoes */
+
+/* Resumo dos limites dos cartoes de credito */
+.dashboard-cards-panel {
+  margin-top: 15px;
+  padding: 18px 19px;
+}
+
+.dashboard-card-list {
+  display: grid;
+  margin-top: 9px;
+}
+
+.dashboard-credit-card {
+  min-width: 0;
+  min-height: 59px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid #f0f3f1;
+}
+
+.dashboard-credit-card-main {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 5px;
+}
+
+.dashboard-credit-card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #48564d;
+  font-size: 10px;
+}
+
+.dashboard-credit-card-heading span,
+.dashboard-credit-card-main small {
+  color: #8d9991;
+  font-size: 9px;
+}
+
+.card-limit-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #edf2ee;
+}
+
+.card-limit-track i {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: #44a783;
+  transition: width .2s ease;
+}
+
+.card-limit-track i.card-limit-near {
+  background: #df816d;
+}
+
+.dashboard-pay-card {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 9px;
+}
+
+.dashboard-card-empty {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #f0f3f1;
+  color: #929e96;
+  font-size: 10px;
+}
+
+.content-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 560px) {
+  .dashboard-credit-card {
+    gap: 8px;
+  }
+
+  .dashboard-credit-card-heading {
+    flex-wrap: wrap;
+  }
+
+}

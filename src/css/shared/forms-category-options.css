@@ -1,0 +1,127 @@
+/* Opcoes de categoria e autenticacao */
+
+.category-choice-field {
+  min-width: 0;
+  margin: 4px 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+/* Escolha de emojis e cores */
+.category-choice-field legend {
+  margin-bottom: 9px;
+  color: #56635b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.emoji-choices {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+}
+
+.emoji-choice, .color-choice {
+  position: relative;
+  margin: 0 !important;
+}
+
+.emoji-choice input, .color-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.emoji-choice span {
+  height: 37px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e9efeb;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.emoji-choice span svg {
+  width: 17px;
+  height: 17px;
+  color: #178567;
+}
+
+.emoji-choice input:checked + span {
+  border-color: #68b495;
+  background: #f1f8f4;
+  box-shadow: 0 0 0 2px #17856712;
+}
+
+.emoji-choice input:focus-visible + span, .color-choice input:focus-visible + span {
+  outline: 2px solid #178567;
+  outline-offset: 2px;
+}
+
+.color-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 11px;
+}
+
+.color-choice span {
+  width: 25px;
+  height: 25px;
+  display: block;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #dce5df;
+  cursor: pointer;
+}
+
+.color-choice input:checked + span {
+  box-shadow: 0 0 0 2px #178567;
+}
+
+/* Campos e retorno visual da autenticacao */
+.auth-form {
+  margin-top: 20px;
+}
+
+.auth-form label {
+  margin-bottom: 13px;
+}
+
+.auth-submit {
+  width: 100%;
+  height: 42px;
+  margin-top: 2px;
+}
+
+.auth-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.auth-feedback svg {
+  flex: 0 0 16px;
+  margin-top: 1px;
+}
+
+.auth-feedback-error {
+  color: #9d543f;
+  border-color: #f0d2c8;
+  background: #fff5f1;
+}
+
+.auth-feedback-success {
+  color: #126b4f;
+  border-color: #ccebd9;
+  background: #e3f6eb;
+  font-size: 10px;
+}

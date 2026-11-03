@@ -1,0 +1,176 @@
+/* Seletor e cadastro de bancos */
+
+/* Seletor e cadastro de banco */
+.bank-picker-selected {
+  width: 100%;
+  min-height: 45px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border: 1px solid #e1e9e4;
+  border-radius: 8px;
+  color: #334139;
+  background: #fff;
+  text-align: left;
+  font-size: 11px;
+}
+
+.bank-picker-selected:hover, .bank-picker-selected[aria-expanded="true"] {
+  border-color: #52a98a;
+}
+
+.bank-picker-chevron {
+  margin-left: auto;
+  color: #829087;
+}
+
+.bank-picker-panel {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid #e1e9e4;
+  border-radius: 10px;
+  background: #fbfcfb;
+}
+
+.bank-search {
+  height: 36px !important;
+}
+
+.bank-options {
+  max-height: 210px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  overflow-y: auto;
+}
+
+.bank-option {
+  min-width: 0;
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #56635b;
+  background: #fff;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+}
+
+.bank-option:hover, .bank-option.selected {
+  border-color: #68b495;
+  color: #147859;
+  background: #f1f8f4;
+}
+
+.bank-option > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bank-no-results {
+  grid-column: 1 / -1;
+  padding: 12px;
+  color: #89958e;
+  text-align: center;
+  font-size: 10px;
+}
+
+.custom-bank-trigger {
+  min-height: 36px;
+  border: 0;
+  border-top: 1px solid #e9efeb;
+  color: #178567;
+  background: transparent;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.custom-bank-trigger:hover {
+  color: #116c54;
+}
+
+.custom-bank-form {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #e1e9e4;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.custom-bank-form > strong {
+  color: #354139;
+  font-size: 11px;
+}
+
+.custom-bank-form > input {
+  height: 36px;
+}
+
+.custom-bank-label {
+  color: #56635b;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.bank-emoji-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bank-emoji-options label {
+  position: relative;
+  margin: 0 !important;
+}
+
+.bank-emoji-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.bank-emoji-options span {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e9efeb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.bank-emoji-options input:checked + span {
+  border-color: #68b495;
+  background: #f1f8f4;
+  box-shadow: 0 0 0 2px #17856712;
+}
+
+.bank-custom-error {
+  color: #a64c3c;
+  font-size: 9px;
+}
+
+.custom-bank-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.custom-bank-actions .button-primary, .custom-bank-actions .button-secondary {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 9px;
+}
