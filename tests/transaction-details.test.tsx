@@ -1,9 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TransactionDetailsModal } from "../src/components/TransactionDetailsModal";
 import { TransactionRow } from "../src/components/TransactionRow";
 import { MovementsPage } from "../src/pages/MovementsPage";
 import type { Transaction } from "../src/types/finance";
+
+afterEach(cleanup);
 
 const pendingExpense: Transaction = {
   id: "rent-1",
@@ -61,7 +63,7 @@ describe("detalhes de movimentação", () => {
   it("abre o detalhe da movimentação por teclado", () => {
     const onOpen = vi.fn();
     render(<TransactionRow transaction={pendingExpense} showValues onOpen={onOpen} />);
-    const row = screen.getByRole("button", { name: "Abrir lançamento Aluguel" });
+    const row = screen.getByRole("group", { name: "Lançamento Aluguel" });
     fireEvent.keyDown(row, { key: "Enter" });
 
     expect(onOpen).toHaveBeenCalledWith(pendingExpense);
@@ -89,6 +91,7 @@ describe("detalhes de movimentação", () => {
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onOpenTransaction={onOpenTransaction}
+        onSettle={vi.fn()}
         initialMonth="2026-12"
         initialType="all"
       />,
@@ -96,7 +99,7 @@ describe("detalhes de movimentação", () => {
 
     expect(screen.getByText("Tênis (2/3)")).toBeTruthy();
     expect(screen.queryByText("Tênis (3/3)")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Abrir lançamento Tênis (2/3)" }));
+    fireEvent.click(screen.getByRole("group", { name: "Lançamento Tênis (2/3)" }));
 
     expect(onOpenTransaction).toHaveBeenCalledWith(nextInstallment);
   });
@@ -109,5 +112,22 @@ describe("detalhes de movimentação", () => {
 
     expect(onEdit).toHaveBeenCalledWith(pendingExpense);
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("permite marcar uma despesa agendada como paga direto na movimentação", () => {
+    const onSettle = vi.fn();
+    render(<TransactionRow transaction={pendingExpense} showValues onSettle={onSettle} onOpen={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Marcar paga" }));
+
+    expect(onSettle).toHaveBeenCalledWith(pendingExpense);
+  });
+
+  it("permite marcar uma receita agendada como recebida direto na movimentação", () => {
+    const pendingIncome: Transaction = { ...pendingExpense, id: "income-1", type: "income" };
+    const onSettle = vi.fn();
+    render(<TransactionRow transaction={pendingIncome} showValues onSettle={onSettle} onOpen={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Marcar recebida" }));
+
+    expect(onSettle).toHaveBeenCalledWith(pendingIncome);
   });
 });

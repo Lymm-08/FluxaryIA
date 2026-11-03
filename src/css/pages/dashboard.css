@@ -500,6 +500,14 @@
   height: 25px;
 }
 
+.transaction-settle-button {
+  min-height: 27px;
+  padding: 0 8px;
+  gap: 5px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
 .empty-state {
   min-height: 189px;
   display: flex;

@@ -5,13 +5,14 @@ import type { Transaction, TransactionType } from "../types/finance";
 import { money } from "../utils/format";
 
 // Histórico mensal com filtros de receita/despesa e navegação entre períodos.
-export function MovementsPage({ transactions, showValues, onAdd, onEdit, onDelete, onOpenTransaction, initialMonth, initialType }: {
+export function MovementsPage({ transactions, showValues, onAdd, onEdit, onDelete, onOpenTransaction, onSettle, initialMonth, initialType }: {
   transactions: Transaction[];
   showValues: boolean;
   onAdd: () => void;
   onEdit: (transaction: Transaction) => void;
   onDelete: (transaction: Transaction) => void;
   onOpenTransaction: (transaction: Transaction) => void;
+  onSettle: (transaction: Transaction) => void;
   initialMonth: string;
   initialType: TransactionType | "all";
 }) {
@@ -56,6 +57,7 @@ export function MovementsPage({ transactions, showValues, onAdd, onEdit, onDelet
               onEdit={onEdit}
               onDelete={onDelete}
               onOpen={onOpenTransaction}
+              onSettle={onSettle}
             />
           ))}</div>
           : <div className="empty-state">Nenhuma movimentação neste mês. <button className="text-button" onClick={onAdd}>Adicionar lançamento →</button></div>}

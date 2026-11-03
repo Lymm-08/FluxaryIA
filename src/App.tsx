@@ -789,6 +789,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
           transactions={finance.transactions} showValues={showValues} onAdd={() => openTransactionForm()}
           onEdit={openTransactionForm} onDelete={deleteTransaction}
           onOpenTransaction={(transaction) => setSelectedTransactionId(transaction.id)}
+          onSettle={(transaction) => { void markTransactionSettled(transaction.id); }}
           initialMonth={movementFilter.month} initialType={movementFilter.type}
         />
       ) : page === "Configurações" ? (
