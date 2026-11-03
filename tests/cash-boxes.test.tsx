@@ -74,10 +74,18 @@ describe("caixinhas", () => {
     expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 25.5, "withdrawal");
   });
 
-  it("mostra transferências em Movimentações sem tratá-las como despesa ou receita", () => {
+  it("mostra aportes e retiradas em Movimentações sem tratá-los como despesa ou receita", () => {
+    const withdrawal: Transaction = {
+      ...existingDeposit,
+      id: "withdrawal-1",
+      description: "Retirada: Viagem",
+      type: "income",
+      cashBoxKind: "withdrawal",
+      amount: 25,
+    };
     render(
       <MovementsPage
-        transactions={[existingDeposit]}
+        transactions={[existingDeposit, withdrawal]}
         showValues
         onAdd={vi.fn()}
         onEdit={vi.fn()}
@@ -91,8 +99,13 @@ describe("caixinhas", () => {
 
     expect(screen.getByText("Aporte: Viagem")).toBeTruthy();
     expect(screen.getByText(/Aporte na caixinha · Viagem/)).toBeTruthy();
+    expect(screen.getByText("Retirada: Viagem")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: /Caixinhas/ }));
+    expect(screen.getByText("Aporte: Viagem")).toBeTruthy();
+    expect(screen.getByText("Retirada: Viagem")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: /Despesas/ }));
     expect(screen.queryByText("Aporte: Viagem")).toBeNull();
+    expect(screen.queryByText("Retirada: Viagem")).toBeNull();
   });
 
   it("solicita a migration no Supabase sem desativar as outras telas", () => {
