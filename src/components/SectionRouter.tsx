@@ -5,10 +5,10 @@ import { CardsPage } from "../pages/CardsPage";
 import { GoalsPage } from "../pages/GoalsPage";
 import { CashBoxesPage } from "../pages/CashBoxesPage";
 import { PlanningPage } from "../pages/PlanningPage";
-import type { Account, BudgetPlan, CashBox, CashBoxDeposit, Category, CreditCardItem, CustomBank, FinancialGoal, Transaction } from "../types/finance";
+import type { Account, BudgetPlan, CashBox, Category, CreditCardItem, CustomBank, FinancialGoal, Transaction } from "../types/finance";
 
 // Encaminha cada seção para sua página isolada.
-export function SectionRouter({ page, transactions, categories, accounts, cards, customBanks, plans, goals, cashBoxes, cashBoxDeposits, accountBalances, cashBoxSchemaReady, handlers }: {
+export function SectionRouter({ page, transactions, categories, accounts, cards, customBanks, plans, goals, cashBoxes, accountBalances, cashBoxSchemaReady, handlers }: {
   page: string;
   transactions: Transaction[];
   categories: Category[];
@@ -18,7 +18,6 @@ export function SectionRouter({ page, transactions, categories, accounts, cards,
   plans: BudgetPlan[];
   goals: FinancialGoal[];
   cashBoxes: CashBox[];
-  cashBoxDeposits: CashBoxDeposit[];
   accountBalances: Record<string, number>;
   cashBoxSchemaReady: boolean;
   handlers: {
@@ -40,14 +39,14 @@ export function SectionRouter({ page, transactions, categories, accounts, cards,
     editGoal: (goal: FinancialGoal) => void;
     deleteGoal: (goal: FinancialGoal) => void;
     addCashBox: (name: string) => boolean;
-    depositCashBox: (cashBox: CashBox, accountId: string, amount: number) => boolean;
+    depositCashBox: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") => boolean;
   };
 }) {
   switch (page) {
     case "Categorias":
       return <CategoriesPage categories={categories} transactions={transactions} onAdd={handlers.addCategory} onEdit={handlers.editCategory} onDelete={handlers.deleteCategory} />;
     case "Contas":
-      return <AccountsPage accounts={accounts} customBanks={customBanks} transactions={transactions} cashBoxDeposits={cashBoxDeposits} onAdd={handlers.addAccount} onEdit={handlers.editAccount} onDelete={handlers.deleteAccount} />;
+      return <AccountsPage accounts={accounts} customBanks={customBanks} transactions={transactions} onAdd={handlers.addAccount} onEdit={handlers.editAccount} onDelete={handlers.deleteAccount} />;
     case "Cartões":
       return <CardsPage cards={cards} customBanks={customBanks} transactions={transactions} onAdd={handlers.addCard} onEdit={handlers.editCard} onDelete={handlers.deleteCard} onPayCard={handlers.payCard} />;
     case "Planejamento":
@@ -57,7 +56,7 @@ export function SectionRouter({ page, transactions, categories, accounts, cards,
     case "Caixinhas":
       return <CashBoxesPage
         cashBoxes={cashBoxes}
-        deposits={cashBoxDeposits}
+        transactions={transactions}
         accounts={accounts}
         accountBalances={accountBalances}
         schemaReady={cashBoxSchemaReady}

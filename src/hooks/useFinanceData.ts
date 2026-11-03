@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_CATEGORIES } from "../data/categories";
 import { supabase } from "../lib/supabase";
-import type { Account, BudgetPlan, CashBox, CashBoxDeposit, Category, CreditCardItem, CustomBank, DashboardWidget, FinancialGoal, Transaction } from "../types/finance";
+import type { Account, BudgetPlan, CashBox, Category, CreditCardItem, CustomBank, DashboardWidget, FinancialGoal, Transaction } from "../types/finance";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 const DEFAULT_DASHBOARD_WIDGETS: DashboardWidget[] = ["cards", "goals"];
@@ -16,7 +16,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   const [plans, setPlans] = useState<BudgetPlan[]>([]);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [cashBoxes, setCashBoxes] = useState<CashBox[]>([]);
-  const [cashBoxDeposits, setCashBoxDeposits] = useState<CashBoxDeposit[]>([]);
   const [monthlyBudget, setMonthlyBudget] = useState<number | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [dashboardWidgets, setDashboardWidgets] = useState<DashboardWidget[]>(DEFAULT_DASHBOARD_WIDGETS);
@@ -40,18 +39,17 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         client.from("budgets").select("*").order("category"),
         client.from("financial_goals").select("*").order("created_at", { ascending: false }),
         client.from("cash_boxes").select("*").order("created_at", { ascending: false }),
-        client.from("cash_box_deposits").select("*").order("created_at", { ascending: false }),
+        client.from("transactions").select("cash_box_id,cash_box_kind").limit(1),
         client.from("user_settings").select("*").maybeSingle(),
       ]);
-      const cashBoxSchemaMissing = results.slice(7, 9).some((result) =>
-        result.error && isMissingCashBoxTable(result.error),
-      );
+      const cashBoxSchemaMissing = Boolean(results[7].error && isMissingCashBoxTable(results[7].error))
+        || Boolean(results[8].error && isMissingCashBoxMovementColumns(results[8].error));
       const failed = results.find((result, index) =>
-        result.error && !(cashBoxSchemaMissing && index >= 7 && index <= 8),
+        result.error && !(cashBoxSchemaMissing && (index === 7 || index === 8)),
       );
       if (failed?.error) throw failed.error;
       if (!active) return;
-      const [transactionRows, categoryRows, accountRows, cardRows, bankRows, budgetRows, goalRows, cashBoxRows, cashBoxDepositRows, settingsRows] = results;
+      const [transactionRows, categoryRows, accountRows, cardRows, bankRows, budgetRows, goalRows, cashBoxRows, , settingsRows] = results;
       setCashBoxSchemaReady(!cashBoxSchemaMissing);
       const savedCategories = (categoryRows.data ?? []).map((row): Category => ({
         id: row.id, name: row.name, type: row.type, color: row.color, emoji: row.emoji,
@@ -75,6 +73,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         ...(row.account_id ? { accountId: row.account_id } : {}),
         ...(row.credit_card_id ? { creditCardId: row.credit_card_id } : {}),
         ...(row.credit_card_kind ? { creditCardKind: row.credit_card_kind } : {}),
+        ...(row.cash_box_id && row.cash_box_kind ? { cashBoxId: row.cash_box_id, cashBoxKind: row.cash_box_kind } : {}),
         ...(row.installment_group_id ? { installmentGroupId: row.installment_group_id } : {}),
         ...(row.installment_number ? { installmentNumber: row.installment_number } : {}),
         ...(row.installment_count ? { installmentCount: row.installment_count } : {}),
@@ -101,13 +100,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         id: row.id, name: row.name, target: Number(row.target), saved: Number(row.saved), deadline: row.deadline ?? "",
       })));
       setCashBoxes((cashBoxRows.data ?? []).map((row): CashBox => ({ id: row.id, name: row.name })));
-      setCashBoxDeposits((cashBoxDepositRows.data ?? []).map((row): CashBoxDeposit => ({
-        id: row.id,
-        cashBoxId: row.cash_box_id,
-        accountId: row.account_id,
-        amount: Number(row.amount),
-        createdAt: row.created_at,
-      })));
       setMonthlyBudget(settingsRows.data?.monthly_budget === null || settingsRows.data?.monthly_budget === undefined
         ? null
         : Number(settingsRows.data.monthly_budget));
@@ -121,7 +113,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       onError(`Falha ao carregar os dados da nuvem: ${message}`);
     });
     return () => { active = false; };
-  }, [userId, onError, setAccounts, setCards, setCategories, setCashBoxDeposits, setCashBoxes, setCustomBanks, setGoals, setPlans, setTransactions]);
+  }, [userId, onError, setAccounts, setCards, setCategories, setCashBoxes, setCustomBanks, setGoals, setPlans, setTransactions]);
 
   const enqueueSync = useCallback((key: string, operation: () => Promise<void>) => {
     const previous = queues.current[key] ?? Promise.resolve();
@@ -141,6 +133,13 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         onError(
           "A movimentação não foi salva na nuvem porque falta a coluna account_id no Supabase. "
           + "Execute supabase/migrations/20261103000000_transactions_account_source.sql no SQL Editor e tente novamente.",
+        );
+        return;
+      }
+      if (key === "movimentações" && isMissingCashBoxMovementColumns(reason)) {
+        onError(
+          "A movimentação não foi salva na nuvem porque faltam as colunas de Caixinhas em transactions. "
+          + "Execute supabase/migrations/20261103030000_cash_box_withdrawals.sql no SQL Editor.",
         );
         return;
       }
@@ -166,6 +165,10 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       account_id: item.accountId ?? null,
       credit_card_id: item.creditCardId ?? null,
       credit_card_kind: item.creditCardKind ?? null,
+      ...(cashBoxSchemaReady ? {
+        cash_box_id: item.cashBoxId ?? null,
+        cash_box_kind: item.cashBoxKind ?? null,
+      } : {}),
       installment_group_id: item.installmentGroupId ?? null,
       installment_number: item.installmentNumber ?? null,
       installment_count: item.installmentCount ?? null,
@@ -184,7 +187,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         async (ids) => (await client.from("transactions").delete().in("id", ids)).error,
       );
     });
-  }, [cloudReady, enqueueSync, transactions, userId]);
+  }, [cashBoxSchemaReady, cloudReady, enqueueSync, transactions, userId]);
 
   useEffect(() => {
     if (!cloudReady || !userId || !supabase) return;
@@ -288,28 +291,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   }, [cashBoxes, cashBoxSchemaReady, cloudReady, enqueueSync, userId]);
 
   useEffect(() => {
-    if (!cloudReady || !cashBoxSchemaReady || !userId || !supabase) return;
-    const client = supabase;
-    const rows = cashBoxDeposits.map((item) => ({
-      id: item.id,
-      user_id: userId,
-      cash_box_id: item.cashBoxId,
-      account_id: item.accountId,
-      amount: item.amount,
-    }));
-    enqueueSync("aportes às caixinhas", async () => {
-      await queues.current["contas"];
-      await queues.current["caixinhas"];
-      await syncRows(
-        rows,
-        async () => (await client.from("cash_box_deposits").upsert(rows, { onConflict: "user_id,id" })).error,
-        async () => { const result = await client.from("cash_box_deposits").select("id"); return { ids: result.data?.map((row) => row.id) ?? [], error: result.error }; },
-        async (ids) => (await client.from("cash_box_deposits").delete().in("id", ids)).error,
-      );
-    });
-  }, [cashBoxDeposits, cashBoxSchemaReady, cloudReady, enqueueSync, userId]);
-
-  useEffect(() => {
     if (!cloudReady || !userId || !supabase) return;
     const client = supabase;
     enqueueSync("preferências", async () => {
@@ -323,7 +304,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   return {
     transactions, setTransactions, categories, setCategories, accounts, setAccounts, cards, setCards,
     customBanks, setCustomBanks, plans, setPlans, goals, setGoals, cashBoxes, setCashBoxes,
-    cashBoxDeposits, setCashBoxDeposits, monthlyBudget, setMonthlyBudget,
+    monthlyBudget, setMonthlyBudget,
     darkMode, setDarkMode, dashboardWidgets, setDashboardWidgets,
     cashBoxSchemaReady, loading: Boolean(userId && loadedUserId !== userId && !loadError), loadError,
   };
@@ -355,7 +336,15 @@ function isMissingCashBoxTable(reason: unknown): boolean {
   const error = reason as { code?: unknown; message?: unknown };
   return (error.code === "PGRST205" || error.code === "42P01")
     && typeof error.message === "string"
-    && (error.message.includes("cash_boxes") || error.message.includes("cash_box_deposits"));
+    && error.message.includes("cash_boxes");
+}
+
+function isMissingCashBoxMovementColumns(reason: unknown): boolean {
+  if (!reason || typeof reason !== "object") return false;
+  const error = reason as { code?: unknown; message?: unknown };
+  return (error.code === "PGRST204" || error.code === "42703")
+    && typeof error.message === "string"
+    && (error.message.includes("cash_box_id") || error.message.includes("cash_box_kind"));
 }
 
 async function syncRows(

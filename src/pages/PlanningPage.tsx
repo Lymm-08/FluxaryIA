@@ -18,8 +18,10 @@ export function PlanningPage({ plans, transactions, categories, onAdd, onEdit, o
     category: categories.find((item) => item.id === plan.categoryId) ?? categories.find((item) => item.name === plan.category),
     spent: transactions
       .filter((transaction) => transaction.type === "expense"
+        && !transaction.cashBoxKind
         && transaction.isSettled !== false
         && transaction.creditCardKind !== "payment"
+        && transaction.creditCardKind !== "purchase"
         && transaction.category === plan.category
         && transaction.transaction_date.startsWith(month))
       .reduce((sum, item) => sum + item.amount, 0),

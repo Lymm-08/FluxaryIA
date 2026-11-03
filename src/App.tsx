@@ -13,7 +13,7 @@ import { AuthPage } from "./auth/AuthPage";
 import { useAuth } from "./auth/AuthProvider";
 import { SettingsPage } from "./pages/SettingsPage";
 import type {
-  Account, BudgetPlan, CashBox, CashBoxDeposit, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
+  Account, BudgetPlan, CashBox, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
 } from "./types/finance";
 import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage } from "./utils/finance";
 import { localDateString, parseAmount } from "./utils/format";
@@ -130,16 +130,16 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   }, []);
 
   const totals = useMemo(
-    () => calculateTotals(finance.transactions, finance.accounts, finance.cashBoxDeposits),
-    [finance.accounts, finance.cashBoxDeposits, finance.transactions],
+    () => calculateTotals(finance.transactions, finance.accounts),
+    [finance.accounts, finance.transactions],
   );
   const projectedBalance = useMemo(
-    () => calculateProjectedBalance(finance.transactions, finance.accounts, finance.cards, finance.cashBoxDeposits),
-    [finance.accounts, finance.cards, finance.cashBoxDeposits, finance.transactions],
+    () => calculateProjectedBalance(finance.transactions, finance.accounts, finance.cards),
+    [finance.accounts, finance.cards, finance.transactions],
   );
   const accountBalances = Object.fromEntries(finance.accounts.map((account) => [
     account.id,
-    getAccountBalance(account, finance.transactions, finance.cashBoxDeposits),
+    getAccountBalance(account, finance.transactions),
   ]));
   const today = localDateString(new Date());
   const monthlyBudget = finance.monthlyBudget;
@@ -147,11 +147,13 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   const creditUsage = finance.cards.reduce((total, card) => total + getCardUsage(card, finance.transactions).used, 0);
   const creditLimit = finance.cards.reduce((total, card) => total + card.creditLimit, 0);
   const creditUtilization = creditLimit > 0 ? creditUsage / creditLimit : 0;
-  const dashboardTransactions = finance.transactions.filter((item) => item.transaction_date.startsWith(today.slice(0, 7)));
+  const dashboardTransactions = finance.transactions.filter((item) =>
+    item.transaction_date.startsWith(today.slice(0, 7)) && !item.cashBoxKind,
+  );
   const selectedTransaction = finance.transactions.find((item) => item.id === selectedTransactionId) ?? null;
   const notifications = useMemo((): FinanceNotification[] => {
     const plannedTransactions = finance.transactions
-      .filter((transaction) => transaction.isSettled === false)
+      .filter((transaction) => transaction.isSettled === false && !transaction.cashBoxKind)
       .sort((left, right) => left.transaction_date.localeCompare(right.transaction_date))
       .map((transaction): FinanceNotification => ({
         id: `transaction-${transaction.id}`,
@@ -244,6 +246,10 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   }
 
   function openTransactionForm(transaction: Transaction | null = null) {
+    if (transaction?.cashBoxKind) {
+      setError("Aportes e retiradas são transferências. Para alterar o valor, exclua o movimento e registre-o novamente.");
+      return;
+    }
     setTransactionToEdit(transaction);
     setTransactionType(transaction?.type ?? "expense");
     setSelectedCategoryId(transaction?.categoryId
@@ -391,7 +397,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       return;
     }
     if (transactionType === "expense" && !isScheduled && !usesCard && account) {
-      const currentBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
+      const currentBalance = getAccountBalance(account, finance.transactions);
       const previousAccountEffect = transactionToEdit?.accountId === account.id
         && transactionToEdit.creditCardKind !== "purchase"
         ? transactionToEdit.type === "income" ? -transactionToEdit.amount : transactionToEdit.amount
@@ -486,7 +492,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       ? finance.accounts.find((item) => item.id === transaction.accountId)
       : undefined;
     if (transaction.type === "expense" && account) {
-      const accountBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
+      const accountBalance = getAccountBalance(account, finance.transactions);
       if (transaction.amount > accountBalance && !await askConfirmation({
         title: "A conta ficará negativa",
         message: `O lançamento de ${money.format(transaction.amount)} é maior que o saldo atual da conta (${money.format(accountBalance)}). Se confirmar, o saldo ficará negativo.`,
@@ -524,7 +530,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       setError("Selecione a conta usada para pagar a fatura.");
       return;
     }
-    const accountBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
+    const accountBalance = getAccountBalance(account, finance.transactions);
     if (amount > accountBalance && !await askConfirmation({
       title: "A conta ficará negativa",
       message: `O pagamento de ${money.format(amount)} é maior que o saldo atual da conta (${money.format(accountBalance)}). Se continuar, o saldo ficará negativo.`,
@@ -751,29 +757,41 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     return true;
   }
 
-  function depositIntoCashBox(cashBox: CashBox, accountId: string, amount: number) {
+  function moveCashBoxMoney(cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") {
     const account = finance.accounts.find((item) => item.id === accountId);
     if (!finance.cashBoxes.some((item) => item.id === cashBox.id) || !account) {
-      setError("Selecione uma caixinha e uma conta válidas para o aporte.");
+      setError("Selecione uma caixinha e uma conta válidas para a transferência.");
       return false;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError("Informe um valor válido para guardar.");
+      setError("Informe um valor válido para a transferência.");
       return false;
     }
-    const availableBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
-    if (amount > availableBalance) {
-      setError(`O aporte não pode ser maior que o saldo disponível na conta (${money.format(availableBalance)}).`);
+    const accountBalance = getAccountBalance(account, finance.transactions);
+    const cashBoxBalance = finance.transactions
+      .filter((item) => item.cashBoxId === cashBox.id && item.cashBoxKind && item.isSettled !== false)
+      .reduce((sum, item) => sum + (item.cashBoxKind === "deposit" ? item.amount : -item.amount), 0);
+    if (kind === "deposit" && amount > accountBalance) {
+      setError(`O aporte não pode ser maior que o saldo disponível na conta (${money.format(accountBalance)}).`);
       return false;
     }
-    const deposit: CashBoxDeposit = {
+    if (kind === "withdrawal" && amount > cashBoxBalance) {
+      setError(`A retirada não pode ser maior que o saldo da caixinha (${money.format(cashBoxBalance)}).`);
+      return false;
+    }
+    const transaction: Transaction = {
       id: crypto.randomUUID(),
-      cashBoxId: cashBox.id,
-      accountId: account.id,
+      description: `${kind === "deposit" ? "Aporte" : "Retirada"}: ${cashBox.name}`,
+      category: "Caixinha",
+      transaction_date: localDateString(new Date()),
       amount,
-      createdAt: new Date().toISOString(),
+      type: kind === "deposit" ? "expense" : "income",
+      isSettled: true,
+      accountId: account.id,
+      cashBoxId: cashBox.id,
+      cashBoxKind: kind,
     };
-    finance.setCashBoxDeposits((current) => [...current, deposit]);
+    finance.setTransactions((current) => [transaction, ...current]);
     setError("");
     return true;
   }
@@ -782,10 +800,6 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     if (!item) return;
     if (type === "account" && finance.transactions.some((transaction) => transaction.accountId === item.id)) {
       setError("Esta conta tem movimentações vinculadas. Mantenha-a para preservar o histórico financeiro.");
-      return;
-    }
-    if (type === "account" && finance.cashBoxDeposits.some((deposit) => deposit.accountId === item.id)) {
-      setError("Esta conta tem aportes vinculados a caixinhas. Mantenha-a para preservar o histórico.");
       return;
     }
     if (type === "card" && finance.transactions.some((transaction) => transaction.creditCardId === item.id)) {
@@ -857,7 +871,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
         <SectionRouter
           page={page} transactions={finance.transactions} categories={finance.categories} accounts={finance.accounts}
           cards={finance.cards} customBanks={finance.customBanks} plans={finance.plans} goals={finance.goals}
-          cashBoxes={finance.cashBoxes} cashBoxDeposits={finance.cashBoxDeposits} accountBalances={accountBalances}
+          cashBoxes={finance.cashBoxes} accountBalances={accountBalances}
           cashBoxSchemaReady={finance.cashBoxSchemaReady}
           handlers={{
             addTransaction: () => openTransactionForm(),
@@ -878,14 +892,13 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
             editGoal: (entry) => openFinanceEntry("goal", entry),
             deleteGoal: (entry) => removeEntry("goal", entry),
             addCashBox: createCashBox,
-            depositCashBox: depositIntoCashBox,
+            depositCashBox: moveCashBoxMoney,
           }}
         />
       )}
       {showTransactionForm && (
         <TransactionModal
           categories={finance.categories} accounts={finance.accounts} cards={finance.cards} transactions={finance.transactions}
-          cashBoxDeposits={finance.cashBoxDeposits}
           transaction={transactionToEdit}
           selectedAccountId={selectedAccountId} selectedCardId={selectedCreditCardId} type={transactionType} categoryId={selectedCategoryId}
           onTypeChange={(type) => {
@@ -931,7 +944,6 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
           accounts={finance.accounts}
           selectedAccountId={selectedAccountId}
           transactions={finance.transactions}
-          cashBoxDeposits={finance.cashBoxDeposits}
           customBanks={finance.customBanks}
           onAccountChange={setSelectedAccountId}
           onClose={() => setCardPaymentTarget(null)}

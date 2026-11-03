@@ -4,16 +4,19 @@ import type { Account, CashBox } from "../types/finance";
 import { parseAmount } from "../utils/format";
 import { StyledSelect } from "./StyledSelect";
 
-export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCreate, onDeposit }: {
+export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCreate, onDeposit, movementKind }: {
   cashBox: CashBox | null;
   accounts: Account[];
   accountBalances: Record<string, number>;
   onClose: () => void;
   onCreate: (name: string) => boolean;
-  onDeposit: (cashBox: CashBox, accountId: string, amount: number) => boolean;
+  movementKind: "deposit" | "withdrawal";
+  onDeposit: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") => boolean;
 }) {
-  const fundableAccounts = accounts.filter((account) => (accountBalances[account.id] ?? 0) > 0);
-  const [accountId, setAccountId] = useState(fundableAccounts[0]?.id ?? "");
+  const availableAccounts = movementKind === "deposit"
+    ? accounts.filter((account) => (accountBalances[account.id] ?? 0) > 0)
+    : accounts;
+  const [accountId, setAccountId] = useState(availableAccounts[0]?.id ?? "");
   const [amount, setAmount] = useState("");
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -25,7 +28,7 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
     }
 
     const value = parseAmount(amount);
-    if (Number.isFinite(value) && onDeposit(cashBox, accountId, value)) onClose();
+    if (Number.isFinite(value) && onDeposit(cashBox, accountId, value, movementKind)) onClose();
   }
 
   return (
@@ -36,38 +39,44 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
         <div className="modal-heading">
           <div>
             <span className="eyebrow">FLUXARY.IA · ORGANIZAÇÃO</span>
-            <h2>{cashBox ? `Guardar na ${cashBox.name}` : "Criar caixinha"}</h2>
+            <h2>{cashBox ? movementKind === "deposit" ? `Guardar na ${cashBox.name}` : `Retirar da ${cashBox.name}` : "Criar caixinha"}</h2>
           </div>
           <button type="button" className="icon-button" aria-label="Fechar" onClick={onClose}><X size={18} /></button>
         </div>
         {cashBox ? (
           <>
-            <p className="cash-box-form-copy">Escolha a conta bancária de onde o valor será transferido. Aporte não é registrado como despesa.</p>
-            {fundableAccounts.length ? (
+            <p className="cash-box-form-copy">
+              {movementKind === "deposit"
+                ? "Escolha a conta bancária de onde o valor será transferido. Aporte não é registrado como despesa."
+                : "Escolha a conta que receberá o dinheiro retirado da caixinha."}
+            </p>
+            {availableAccounts.length ? (
               <>
-                <label>Conta de origem
+                <label>{movementKind === "deposit" ? "Conta de origem" : "Conta de destino"}
                   <StyledSelect
                     name="cash-box-account"
                     value={accountId}
-                    ariaLabel="Conta de origem do aporte"
+                    ariaLabel={movementKind === "deposit" ? "Conta de origem do aporte" : "Conta de destino da retirada"}
                     required
-                    options={fundableAccounts.map((account) => {
+                    options={availableAccounts.map((account) => {
                       const balance = accountBalances[account.id] ?? 0;
                       return {
                         value: account.id,
                         label: `${account.name} · disponível R$ ${balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                        disabled: balance <= 0,
+                        disabled: movementKind === "deposit" && balance <= 0,
                       };
                     })}
                     onChange={setAccountId}
                   />
                 </label>
-                <label className="amount-field">Valor do aporte
+                <label className="amount-field">{movementKind === "deposit" ? "Valor do aporte" : "Valor da retirada"}
                   <span className="amount-input-wrap"><span>R$</span><input name="cash-box-amount" type="text" inputMode="decimal" placeholder="0,00" required value={amount} onChange={(event) => setAmount(event.target.value)} /></span>
                 </label>
               </>
             ) : <p className="cash-box-form-copy">
-              {accounts.length
+              {movementKind === "withdrawal"
+                ? "Cadastre uma conta em “Contas” antes de escolher onde receber a retirada."
+                : accounts.length
                 ? "Nenhuma conta tem saldo disponível para fazer um aporte."
                 : "Cadastre uma conta em “Contas” antes de colocar dinheiro na caixinha."}
             </p>}
@@ -80,8 +89,10 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
         )}
         <div className="modal-actions">
           <button type="button" className="button-secondary" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="button-primary" disabled={Boolean(cashBox && fundableAccounts.length === 0)}>
-            {cashBox ? <><Wallet size={14} /> Guardar dinheiro</> : <><Plus size={14} /> Criar caixinha</>}
+          <button type="submit" className="button-primary" disabled={Boolean(cashBox && availableAccounts.length === 0)}>
+            {cashBox
+              ? <><Wallet size={14} /> {movementKind === "deposit" ? "Guardar dinheiro" : "Retirar dinheiro"}</>
+              : <><Plus size={14} /> Criar caixinha</>}
           </button>
         </div>
       </form>

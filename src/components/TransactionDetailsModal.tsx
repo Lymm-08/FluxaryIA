@@ -43,7 +43,7 @@ export function TransactionDetailsModal({ transaction, account, card, showValues
         </dl>
         <div className="transaction-details-actions">
           {isPending && <button type="button" className="button-primary" onClick={onSettle}><CheckCircle2 size={14} /> {actionLabel}</button>}
-          <button type="button" className="button-secondary" onClick={onEdit}><Pencil size={14} /> Editar</button>
+          {!transaction.cashBoxKind && <button type="button" className="button-secondary" onClick={onEdit}><Pencil size={14} /> Editar</button>}
           <button type="button" className="button-secondary transaction-detail-delete" onClick={onDelete}><Trash2 size={14} /> Excluir</button>
         </div>
       </section>

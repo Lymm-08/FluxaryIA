@@ -13,6 +13,8 @@ export type Transaction = {
   accountId?: string;
   creditCardId?: string;
   creditCardKind?: "purchase" | "payment";
+  cashBoxId?: string;
+  cashBoxKind?: "deposit" | "withdrawal";
   installmentGroupId?: string;
   installmentNumber?: number;
   installmentCount?: number;
@@ -72,14 +74,6 @@ export type FinancialGoal = {
 export type CashBox = {
   id: string;
   name: string;
-};
-
-export type CashBoxDeposit = {
-  id: string;
-  cashBoxId: string;
-  accountId: string;
-  amount: number;
-  createdAt: string;
 };
 
 export type Totals = { income: number; expenses: number; balance: number };

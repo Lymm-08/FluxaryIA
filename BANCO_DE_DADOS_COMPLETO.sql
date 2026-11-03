@@ -145,6 +145,8 @@ create table if not exists public.transactions (
   account_id text null,
   credit_card_id text null,
   credit_card_kind text null check (credit_card_kind is null or credit_card_kind in ('purchase', 'payment')),
+  cash_box_id text null,
+  cash_box_kind text null,
   installment_group_id text null,
   installment_number smallint null,
   installment_count smallint null,
@@ -166,9 +168,28 @@ create table if not exists public.transactions (
   constraint transactions_account_credit_purchase_check check (
     credit_card_kind is distinct from 'purchase' or account_id is null
   ),
+  constraint transactions_cash_box_metadata_check check (
+    (cash_box_id is null and cash_box_kind is null)
+    or (
+      cash_box_id is not null
+      and cash_box_kind is not null
+      and cash_box_kind in ('deposit', 'withdrawal')
+      and account_id is not null
+      and credit_card_id is null
+      and credit_card_kind is null
+      and (
+        (cash_box_kind = 'deposit' and type = 'expense')
+        or (cash_box_kind = 'withdrawal' and type = 'income')
+      )
+    )
+  ),
   constraint transactions_account_user_fkey
     foreign key (user_id, account_id)
     references public.accounts (user_id, id)
+    on delete restrict,
+  constraint transactions_cash_box_user_fkey
+    foreign key (user_id, cash_box_id)
+    references public.cash_boxes (user_id, id)
     on delete restrict,
   constraint transactions_credit_card_user_fkey
     foreign key (user_id, credit_card_id)
@@ -207,6 +228,9 @@ create index if not exists transactions_user_credit_card_idx
 create index if not exists transactions_user_account_idx
   on public.transactions (user_id, account_id, transaction_date desc)
   where account_id is not null;
+create index if not exists transactions_user_cash_box_idx
+  on public.transactions (user_id, cash_box_id, transaction_date desc)
+  where cash_box_id is not null;
 create index if not exists transactions_installment_group_idx
   on public.transactions (user_id, installment_group_id)
   where installment_group_id is not null;

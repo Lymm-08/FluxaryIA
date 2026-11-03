@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CashBoxesPage } from "../src/pages/CashBoxesPage";
-import type { Account, CashBox, CashBoxDeposit } from "../src/types/finance";
+import { MovementsPage } from "../src/pages/MovementsPage";
+import type { Account, CashBox, Transaction } from "../src/types/finance";
 
 afterEach(cleanup);
 
@@ -13,12 +14,16 @@ const account: Account = {
 };
 
 const cashBox: CashBox = { id: "trip-1", name: "Viagem" };
-const existingDeposit: CashBoxDeposit = {
+const existingDeposit: Transaction = {
   id: "deposit-1",
+  description: "Aporte: Viagem",
+  category: "Caixinha",
+  transaction_date: "2026-11-03",
+  type: "expense",
   cashBoxId: cashBox.id,
+  cashBoxKind: "deposit",
   accountId: account.id,
   amount: 125,
-  createdAt: "2026-11-03T12:00:00.000Z",
 };
 
 describe("caixinhas", () => {
@@ -27,7 +32,7 @@ describe("caixinhas", () => {
     render(
       <CashBoxesPage
         cashBoxes={[cashBox]}
-        deposits={[existingDeposit]}
+        transactions={[existingDeposit]}
         accounts={[account]}
         accountBalances={{ [account.id]: 375 }}
         schemaReady
@@ -43,14 +48,58 @@ describe("caixinhas", () => {
     fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "75,50" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar dinheiro" }));
 
-    expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 75.5);
+    expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 75.5, "deposit");
+  });
+
+  it("permite retirar dinheiro e escolher a conta de destino", () => {
+    const onDeposit = vi.fn().mockReturnValue(true);
+    render(
+      <CashBoxesPage
+        cashBoxes={[cashBox]}
+        transactions={[existingDeposit]}
+        accounts={[account]}
+        accountBalances={{ [account.id]: 375 }}
+        schemaReady
+        onCreate={vi.fn()}
+        onDeposit={onDeposit}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Retirar dinheiro" })[0]);
+    fireEvent.click(screen.getByRole("combobox", { name: "Conta de destino da retirada" }));
+    fireEvent.click(screen.getByRole("option", { name: /Conta principal/ }));
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "25,50" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Retirar dinheiro" })[1]);
+
+    expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 25.5, "withdrawal");
+  });
+
+  it("mostra transferências em Movimentações sem tratá-las como despesa ou receita", () => {
+    render(
+      <MovementsPage
+        transactions={[existingDeposit]}
+        showValues
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onOpenTransaction={vi.fn()}
+        onSettle={vi.fn()}
+        initialMonth={existingDeposit.transaction_date.slice(0, 7)}
+        initialType="all"
+      />,
+    );
+
+    expect(screen.getByText("Aporte: Viagem")).toBeTruthy();
+    expect(screen.getByText(/Aporte na caixinha · Viagem/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: /Despesas/ }));
+    expect(screen.queryByText("Aporte: Viagem")).toBeNull();
   });
 
   it("solicita a migration no Supabase sem desativar as outras telas", () => {
     render(
       <CashBoxesPage
         cashBoxes={[]}
-        deposits={[]}
+        transactions={[]}
         accounts={[]}
         accountBalances={{}}
         schemaReady={false}
@@ -59,7 +108,7 @@ describe("caixinhas", () => {
       />,
     );
 
-    expect(screen.getByText(/20261103020000_cash_boxes\.sql/)).toBeTruthy();
+    expect(screen.getByText(/20261103030000_cash_box_withdrawals\.sql/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Nova caixinha" })).toHaveProperty("disabled", true);
   });
 });

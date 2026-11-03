@@ -1,46 +1,46 @@
-import type { Account, CashBoxDeposit, CreditCardItem, Totals, Transaction } from "../types/finance";
+import type { Account, CreditCardItem, Totals, Transaction } from "../types/finance";
 import { localDateString } from "./format";
 
 // Calcula o saldo atual das contas a partir do saldo inicial e seus lançamentos.
-export function getAccountBalance(account: Account, transactions: Transaction[], cashBoxDeposits: CashBoxDeposit[] = []) {
+export function getAccountBalance(account: Account, transactions: Transaction[]) {
   const movement = transactions
     .filter((item) => item.isSettled !== false && item.accountId === account.id && item.creditCardKind !== "purchase")
     .reduce((sum, item) => sum + (item.type === "income" ? item.amount : -item.amount), 0);
-  const savedInCashBoxes = cashBoxDeposits
-    .filter((deposit) => deposit.accountId === account.id)
-    .reduce((sum, deposit) => sum + deposit.amount, 0);
-  return account.balance + movement - savedInCashBoxes;
+  return account.balance + movement;
 }
 
 // Combina saldos líquidos das contas com lançamentos do mês sem conta associada.
-export function calculateTotals(transactions: Transaction[], accounts: Account[] = [], cashBoxDeposits: CashBoxDeposit[] = []): Totals {
+export function calculateTotals(transactions: Transaction[], accounts: Account[] = []): Totals {
   const month = localDateString(new Date()).slice(0, 7);
   const monthly = transactions.filter((item) => item.isSettled !== false && item.transaction_date.startsWith(month));
-  const income = monthly.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
+  const income = monthly.filter((item) => item.type === "income" && !item.cashBoxKind).reduce((sum, item) => sum + item.amount, 0);
   const expenses = monthly
-    .filter((item) => item.type === "expense" && item.creditCardKind !== "purchase")
+    .filter((item) => item.type === "expense" && item.creditCardKind !== "purchase" && !item.cashBoxKind)
     .reduce((sum, item) => sum + item.amount, 0);
-  const accountBalance = accounts.reduce((sum, account) => sum + getAccountBalance(account, transactions, cashBoxDeposits), 0);
+  const accountBalance = accounts.reduce((sum, account) => sum + getAccountBalance(account, transactions), 0);
+  const cashBoxBalance = transactions
+    .filter((item) => item.isSettled !== false && item.cashBoxKind)
+    .reduce((sum, item) => sum + (item.cashBoxKind === "deposit" ? item.amount : -item.amount), 0);
   const unassignedMonthlyNet = monthly
-    .filter((item) => !item.accountId && item.creditCardKind !== "purchase")
+    .filter((item) => !item.accountId && item.creditCardKind !== "purchase" && !item.cashBoxKind)
     .reduce((sum, item) => sum + (item.type === "income" ? item.amount : -item.amount), 0);
-  return { income, expenses, balance: accountBalance + unassignedMonthlyNet };
+  return { income, expenses, balance: accountBalance + cashBoxBalance + unassignedMonthlyNet };
 }
 
-export function calculateProjectedBalance(transactions: Transaction[], accounts: Account[], cards: CreditCardItem[], cashBoxDeposits: CashBoxDeposit[] = []) {
-  const actualBalance = calculateTotals(transactions, accounts, cashBoxDeposits).balance;
+export function calculateProjectedBalance(transactions: Transaction[], accounts: Account[], cards: CreditCardItem[]) {
+  const actualBalance = calculateTotals(transactions, accounts).balance;
   const plannedBalanceChange = transactions
     .filter((item) => item.isSettled === false)
-    .filter((item) => item.creditCardKind !== "payment")
+    .filter((item) => item.creditCardKind !== "payment" && !item.cashBoxKind)
     .reduce((sum, item) => sum + (item.type === "income" ? item.amount : -item.amount), 0);
   const unpaidCardBalances = cards.reduce((sum, card) => sum + getCardUsage(card, transactions).used, 0);
   return actualBalance + plannedBalanceChange - unpaidCardBalances;
 }
 
-export function getCashBoxBalance(cashBoxId: string, deposits: CashBoxDeposit[]) {
-  return deposits
-    .filter((deposit) => deposit.cashBoxId === cashBoxId)
-    .reduce((sum, deposit) => sum + deposit.amount, 0);
+export function getCashBoxBalance(cashBoxId: string, transactions: Transaction[]) {
+  return transactions
+    .filter((item) => item.cashBoxId === cashBoxId && item.cashBoxKind && item.isSettled !== false)
+    .reduce((sum, item) => sum + (item.cashBoxKind === "deposit" ? item.amount : -item.amount), 0);
 }
 
 export function getCardUsage(card: CreditCardItem, transactions: Transaction[]) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Account, CashBoxDeposit, CreditCardItem, Transaction } from "../src/types/finance";
+import type { Account, CreditCardItem, Transaction } from "../src/types/finance";
 import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage, getCashBoxBalance } from "../src/utils/finance";
 import { localDateString, parseAmount } from "../src/utils/format";
 
@@ -38,18 +38,32 @@ describe("regras financeiras", () => {
     expect(calculateProjectedBalance(transactions, [account], [])).toBe(1230);
   });
 
-  it("debit a conta para uma caixinha sem classificar o aporte como despesa", () => {
-    const deposits: CashBoxDeposit[] = [{
+  it("registra aporte e retirada como transferências sem alterar receitas, despesas ou patrimônio", () => {
+    const deposit = transaction({
       id: "deposit-1",
-      cashBoxId: "travel",
-      accountId: account.id,
+      description: "Aporte: Viagem",
+      category: "Caixinha",
       amount: 250,
-      createdAt: "2026-11-03T12:00:00.000Z",
-    }];
+      accountId: account.id,
+      cashBoxId: "travel",
+      cashBoxKind: "deposit",
+    });
+    const withdrawal = transaction({
+      id: "withdrawal-1",
+      description: "Retirada: Viagem",
+      category: "Caixinha",
+      type: "income",
+      amount: 50,
+      accountId: account.id,
+      cashBoxId: "travel",
+      cashBoxKind: "withdrawal",
+    });
 
-    expect(getCashBoxBalance("travel", deposits)).toBe(250);
-    expect(getAccountBalance(account, [], deposits)).toBe(750);
-    expect(calculateTotals([], [account], deposits)).toEqual({ income: 0, expenses: 0, balance: 750 });
+    expect(getCashBoxBalance("travel", [deposit, withdrawal])).toBe(200);
+    expect(getAccountBalance(account, [deposit])).toBe(750);
+    expect(getAccountBalance(account, [deposit, withdrawal])).toBe(800);
+    expect(calculateTotals([deposit, withdrawal], [account])).toEqual({ income: 0, expenses: 0, balance: 1000 });
+    expect(calculateProjectedBalance([deposit, withdrawal], [account], [])).toBe(1000);
   });
 
   it("calcula limite do cartão considerando compras, pagamentos e agendamentos", () => {

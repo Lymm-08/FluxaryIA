@@ -19,8 +19,8 @@ export function MovementsPage({ transactions, showValues, onAdd, onEdit, onDelet
   const [month, setMonth] = useState(initialMonth);
   const [type, setType] = useState<TransactionType | "all">(initialType);
   const monthTransactions = transactions.filter((transaction) => transaction.transaction_date.startsWith(month));
-  const visibleTransactions = monthTransactions.filter((transaction) => type === "all" || transaction.type === type);
-  const settledTransactions = monthTransactions.filter((transaction) => transaction.isSettled !== false);
+  const visibleTransactions = monthTransactions.filter((transaction) => type === "all" || (!transaction.cashBoxKind && transaction.type === type));
+  const settledTransactions = monthTransactions.filter((transaction) => transaction.isSettled !== false && !transaction.cashBoxKind);
   const income = settledTransactions.filter((transaction) => transaction.type === "income").reduce((sum, item) => sum + item.amount, 0);
   const expenses = settledTransactions.filter((transaction) => transaction.type === "expense").reduce((sum, item) => sum + item.amount, 0);
 
@@ -45,8 +45,8 @@ export function MovementsPage({ transactions, showValues, onAdd, onEdit, onDelet
       <div className="panel section-panel">
         <div className="movement-tabs" role="tablist" aria-label="Filtrar movimentações">
           <button role="tab" aria-selected={type === "all"} className={type === "all" ? "active" : ""} onClick={() => setType("all")}>Todas <span>{monthTransactions.length}</span></button>
-          <button role="tab" aria-selected={type === "income"} className={type === "income" ? "active" : ""} onClick={() => setType("income")}>Receitas <span>{monthTransactions.filter((item) => item.type === "income").length}</span></button>
-          <button role="tab" aria-selected={type === "expense"} className={type === "expense" ? "active" : ""} onClick={() => setType("expense")}>Despesas <span>{monthTransactions.filter((item) => item.type === "expense").length}</span></button>
+          <button role="tab" aria-selected={type === "income"} className={type === "income" ? "active" : ""} onClick={() => setType("income")}>Receitas <span>{monthTransactions.filter((item) => item.type === "income" && !item.cashBoxKind).length}</span></button>
+          <button role="tab" aria-selected={type === "expense"} className={type === "expense" ? "active" : ""} onClick={() => setType("expense")}>Despesas <span>{monthTransactions.filter((item) => item.type === "expense" && !item.cashBoxKind).length}</span></button>
         </div>
         {visibleTransactions.length
           ? <div className="transaction-list">{visibleTransactions.map((transaction) => (

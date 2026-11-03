@@ -4,17 +4,16 @@ import { CategoryGlyph } from "./CategoryGlyph";
 import { StyledSelect } from "./StyledSelect";
 import { DatePicker } from "./DatePicker";
 import type { BalanceMode } from "./BalanceModal";
-import type { Account, CashBoxDeposit, Category, CreditCardItem, Transaction, TransactionType } from "../types/finance";
+import type { Account, Category, CreditCardItem, Transaction, TransactionType } from "../types/finance";
 import { getAccountBalance, getCardUsage } from "../utils/finance";
 import { localDateString, money, parseAmount } from "../utils/format";
 
 // Fluxo de lançamento com escolha de tipo e atalhos visuais para categorias.
-export function TransactionModal({ categories, accounts, cards, transactions, cashBoxDeposits, selectedAccountId, selectedCardId, transaction, type, categoryId, onTypeChange, onCategoryChange, onAccountChange, onCardChange, onClose, onSubmit, onManageCategories, onManageAccounts, onBalanceAction }: {
+export function TransactionModal({ categories, accounts, cards, transactions, selectedAccountId, selectedCardId, transaction, type, categoryId, onTypeChange, onCategoryChange, onAccountChange, onCardChange, onClose, onSubmit, onManageCategories, onManageAccounts, onBalanceAction }: {
   categories: Category[];
   accounts: Account[];
   cards: CreditCardItem[];
   transactions: Transaction[];
-  cashBoxDeposits: CashBoxDeposit[];
   transaction: Transaction | null;
   selectedAccountId: string;
   selectedCardId: string;
@@ -38,7 +37,7 @@ export function TransactionModal({ categories, accounts, cards, transactions, ca
   const filteredCategories = categories.filter((category) => category.type === type);
   const selectedCard = cards.find((card) => card.id === selectedCardId);
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId);
-  const selectedAccountBalance = selectedAccount ? getAccountBalance(selectedAccount, transactions, cashBoxDeposits) : null;
+  const selectedAccountBalance = selectedAccount ? getAccountBalance(selectedAccount, transactions) : null;
   const selectedCardUsage = selectedCard ? getCardUsage(selectedCard, transactions) : null;
   const futureDate = date > localDateString(new Date());
   const pendingSchedule = futureDate || transaction?.isSettled === false;
@@ -88,7 +87,7 @@ export function TransactionModal({ categories, accounts, cards, transactions, ca
                     required
                     options={accounts.map((account) => ({
                       value: account.id,
-                      label: `${account.name} · ${money.format(getAccountBalance(account, transactions, cashBoxDeposits))}`,
+                      label: `${account.name} · ${money.format(getAccountBalance(account, transactions))}`,
                     }))}
                     onChange={onAccountChange}
                   />
@@ -147,7 +146,7 @@ export function TransactionModal({ categories, accounts, cards, transactions, ca
                     required
                     options={accounts.map((account) => ({
                       value: account.id,
-                      label: `${account.name} · ${money.format(getAccountBalance(account, transactions, cashBoxDeposits))}`,
+                      label: `${account.name} · ${money.format(getAccountBalance(account, transactions))}`,
                     }))}
                     onChange={onAccountChange}
                   />

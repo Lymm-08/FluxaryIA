@@ -12,7 +12,11 @@ export function TransactionRow({ transaction, showValues, onEdit, onDelete, onOp
   onSettle?: (transaction: Transaction) => void;
 }) {
   const isIncome = transaction.type === "income";
-  const paymentType = transaction.creditCardKind === "purchase"
+  const paymentType = transaction.cashBoxKind === "deposit"
+    ? `Aporte na caixinha${transaction.description.startsWith("Aporte: ") ? ` · ${transaction.description.slice(7)}` : ""}`
+    : transaction.cashBoxKind === "withdrawal"
+      ? `Retirada da caixinha${transaction.description.startsWith("Retirada: ") ? ` · ${transaction.description.slice(10)}` : ""}`
+      : transaction.creditCardKind === "purchase"
     ? `Compra no cartão${transaction.installmentNumber && transaction.installmentCount ? ` (${transaction.installmentNumber}/${transaction.installmentCount})` : ""}`
     : transaction.creditCardKind === "payment" ? "Pagamento de cartão" : transaction.category;
   return (
@@ -39,7 +43,7 @@ export function TransactionRow({ transaction, showValues, onEdit, onDelete, onOp
       <strong className={`transaction-amount ${isIncome ? "amount-positive" : ""}`}>
         {showValues ? `${isIncome ? "+" : "−"} ${money.format(transaction.amount)}` : "R$ •••••"}
       </strong>
-      {(onSettle && transaction.isSettled === false || onEdit || onDelete) && (
+      {(onSettle && transaction.isSettled === false || onEdit && !transaction.cashBoxKind || onDelete) && (
         <div className="transaction-row-actions">
           {onSettle && transaction.isSettled === false && (
             <button type="button" className="button-soft transaction-settle-button" onClick={(event) => {
@@ -50,7 +54,7 @@ export function TransactionRow({ transaction, showValues, onEdit, onDelete, onOp
               {isIncome ? "Marcar recebida" : "Marcar paga"}
             </button>
           )}
-          {onEdit && <button type="button" className="category-action" aria-label={`Editar ${transaction.description}`} onClick={(event) => {
+          {onEdit && !transaction.cashBoxKind && <button type="button" className="category-action" aria-label={`Editar ${transaction.description}`} onClick={(event) => {
             event.stopPropagation();
             onEdit(transaction);
           }}><Pencil size={13} /></button>}
