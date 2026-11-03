@@ -1,5 +1,17 @@
 /* Sobrescritas de responsividade para menu, autenticacao e preferencias. */
 
+@media (min-width: 821px) {
+  .app-shell.app-shell-collapsed > .sidebar {
+    display: none;
+  }
+
+  .app-shell.app-shell-collapsed > .main-content {
+    width: 100%;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 820px) {
   .mobile-menu-icon {
     display: block;

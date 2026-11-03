@@ -1,8 +1,9 @@
 import {
-  Bell, CircleHelp, CreditCard, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen,
+  Bell, BellRing, CircleHelp, CreditCard, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen,
   Settings, Sparkles, Tags, Target, TrendingUp, Wallet, X,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { FinanceNotification } from "../types/finance";
 
 const menuItems = [
   { label: "Visão geral", icon: LayoutDashboard },
@@ -15,7 +16,7 @@ const menuItems = [
 ];
 
 // Navegação principal, cabeçalho e comportamento do menu em telas pequenas.
-export function AppShell({ page, mobileMenuOpen, sidebarCollapsed, userEmail, onNavigate, onToggleSidebar, onMenuClose, onNotify, onSignOut, children }: {
+export function AppShell({ page, mobileMenuOpen, sidebarCollapsed, userEmail, notifications, onMarkSettled, onNavigate, onToggleSidebar, onMenuClose, onSignOut, children }: {
   page: string;
   mobileMenuOpen: boolean;
   sidebarCollapsed: boolean;
@@ -23,10 +24,32 @@ export function AppShell({ page, mobileMenuOpen, sidebarCollapsed, userEmail, on
   onNavigate: (page: string) => void;
   onToggleSidebar: () => void;
   onMenuClose: () => void;
-  onNotify: () => void;
+  notifications: FinanceNotification[];
+  onMarkSettled: (transactionId: string) => void;
   onSignOut: () => void;
   children: ReactNode;
 }) {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    function handleOutside(event: PointerEvent) {
+      if (event.target instanceof Node && !notificationsRef.current?.contains(event.target)) {
+        setNotificationsOpen(false);
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setNotificationsOpen(false);
+    }
+    document.addEventListener("pointerdown", handleOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [notificationsOpen]);
+
   return (
     <div className={`app-shell ${sidebarCollapsed ? "app-shell-collapsed" : ""}`}>
       {mobileMenuOpen && <button aria-label="Fechar menu" className="mobile-backdrop" onClick={onMenuClose} />}
@@ -68,7 +91,54 @@ export function AppShell({ page, mobileMenuOpen, sidebarCollapsed, userEmail, on
           </button>
           <div className="breadcrumb">Seu espaço <span>/</span> <strong>{page}</strong></div>
           <div className="topbar-actions">
-            <button className="icon-button notification-button" aria-label="Notificações" onClick={onNotify}><Bell size={16} /><i /></button>
+            <div className="notification-menu" ref={notificationsRef}>
+              <button
+                className={`icon-button notification-button ${notificationsOpen ? "notification-button-open" : ""}`}
+                aria-label={`Notificações${notifications.length ? `, ${notifications.length} avisos` : ""}`}
+                aria-expanded={notificationsOpen}
+                aria-controls="finance-notification-panel"
+                onClick={() => setNotificationsOpen((open) => !open)}
+              >
+                <Bell size={16} />
+                {notifications.length > 0 && <i aria-hidden="true" />}
+              </button>
+              {notificationsOpen && (
+                <section className="notification-panel" id="finance-notification-panel" role="dialog" aria-label="Notificações">
+                  <div className="notification-panel-heading">
+                    <div><span className="eyebrow">FLUXARY.IA</span><h2>Notificações</h2></div>
+                    <button className="icon-button" aria-label="Fechar notificações" onClick={() => setNotificationsOpen(false)}><X size={15} /></button>
+                  </div>
+                  {notifications.length ? (
+                    <div className="notification-list">
+                      {notifications.map((notification) => (
+                        <article className={`finance-notification ${notification.tone}`} key={notification.id}>
+                          <span className="finance-notification-icon"><BellRing size={14} /></span>
+                          <div className="finance-notification-content">
+                            <strong>{notification.title}</strong>
+                            <p>{notification.message}</p>
+                            {notification.transactionId && (
+                              <button
+                                className="notification-action"
+                                onClick={() => {
+                                  if (notification.transactionId) onMarkSettled(notification.transactionId);
+                                }}
+                              >
+                                {notification.actionLabel ?? "Marcar como realizada"}
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="notification-empty"><Bell size={18} /><strong>Você está em dia!</strong><span>Nenhum aviso financeiro por enquanto.</span></div>
+                  )}
+                  {notifications.length > 0 && (
+                    <div className="notification-summary">{notifications.length} {notifications.length === 1 ? "aviso" : "avisos"} · valores previstos não alteram o saldo atual até serem confirmados.</div>
+                  )}
+                </section>
+              )}
+            </div>
           </div>
         </header>
         <div className="page-wrap">{children}</div>

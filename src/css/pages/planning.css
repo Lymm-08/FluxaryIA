@@ -1,1 +1,122 @@
-/* Planejamento: usa os cartões e indicadores reutilizáveis de ../shared/collections.css. */
+/* Planejamento mensal e resumo visual de gastos por categoria. */
+.planning-summary {
+  grid-column: 1 / -1;
+  padding: 18px;
+}
+
+.planning-summary-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.planning-summary-heading h2 {
+  margin-top: 5px;
+  color: #2a382f;
+  font: 700 14px "Manrope", sans-serif;
+}
+
+.planning-month-label {
+  color: #87958c;
+  font-size: 10px;
+  text-transform: capitalize;
+}
+
+.planning-summary-content {
+  display: grid;
+  grid-template-columns: minmax(140px, .7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 22px;
+  margin-top: 17px;
+}
+
+.planning-donut {
+  width: min(100%, 164px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  border-radius: 50%;
+}
+
+.planning-donut > div {
+  width: 68%;
+  height: 68%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.planning-donut small {
+  color: #87958c;
+  font-size: 9px;
+}
+
+.planning-donut strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #2a382f;
+  font: 700 13px "Manrope", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planning-legend {
+  display: grid;
+  gap: 8px;
+}
+
+.planning-legend-row,
+.planning-summary-total {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #68766d;
+  font-size: 10px;
+}
+
+.planning-legend-row strong,
+.planning-summary-total strong {
+  margin-left: auto;
+  color: #34443b;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.planning-legend-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+}
+
+.planning-legend-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planning-summary-total {
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px solid #edf1ee;
+}
+
+@media (max-width: 520px) {
+  .planning-summary {
+    padding: 14px;
+  }
+
+  .planning-summary-content {
+    grid-template-columns: minmax(95px, .55fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .planning-donut strong {
+    font-size: 10px;
+  }
+}

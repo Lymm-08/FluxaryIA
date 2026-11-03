@@ -5,10 +5,13 @@ import type { Transaction, TransactionType } from "../types/finance";
 import { money } from "../utils/format";
 
 // Histórico mensal com filtros de receita/despesa e navegação entre períodos.
-export function MovementsPage({ transactions, showValues, onAdd, initialMonth, initialType }: {
+export function MovementsPage({ transactions, showValues, onAdd, onEdit, onDelete, onOpenTransaction, initialMonth, initialType }: {
   transactions: Transaction[];
   showValues: boolean;
   onAdd: () => void;
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => void;
+  onOpenTransaction: (transaction: Transaction) => void;
   initialMonth: string;
   initialType: TransactionType | "all";
 }) {
@@ -16,8 +19,9 @@ export function MovementsPage({ transactions, showValues, onAdd, initialMonth, i
   const [type, setType] = useState<TransactionType | "all">(initialType);
   const monthTransactions = transactions.filter((transaction) => transaction.transaction_date.startsWith(month));
   const visibleTransactions = monthTransactions.filter((transaction) => type === "all" || transaction.type === type);
-  const income = monthTransactions.filter((transaction) => transaction.type === "income").reduce((sum, item) => sum + item.amount, 0);
-  const expenses = monthTransactions.filter((transaction) => transaction.type === "expense").reduce((sum, item) => sum + item.amount, 0);
+  const settledTransactions = monthTransactions.filter((transaction) => transaction.isSettled !== false);
+  const income = settledTransactions.filter((transaction) => transaction.type === "income").reduce((sum, item) => sum + item.amount, 0);
+  const expenses = settledTransactions.filter((transaction) => transaction.type === "expense").reduce((sum, item) => sum + item.amount, 0);
 
   return (
     <section className="section-page">
@@ -44,7 +48,16 @@ export function MovementsPage({ transactions, showValues, onAdd, initialMonth, i
           <button role="tab" aria-selected={type === "expense"} className={type === "expense" ? "active" : ""} onClick={() => setType("expense")}>Despesas <span>{monthTransactions.filter((item) => item.type === "expense").length}</span></button>
         </div>
         {visibleTransactions.length
-          ? <div className="transaction-list">{visibleTransactions.map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} showValues={showValues} />)}</div>
+          ? <div className="transaction-list">{visibleTransactions.map((transaction) => (
+            <TransactionRow
+              key={transaction.id}
+              transaction={transaction}
+              showValues={showValues}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onOpen={onOpenTransaction}
+            />
+          ))}</div>
           : <div className="empty-state">Nenhuma movimentação neste mês. <button className="text-button" onClick={onAdd}>Adicionar lançamento →</button></div>}
       </div>
     </section>

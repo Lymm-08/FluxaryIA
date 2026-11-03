@@ -40,11 +40,11 @@ export function SectionRouter({ page, transactions, categories, accounts, cards,
     case "Categorias":
       return <CategoriesPage categories={categories} transactions={transactions} onAdd={handlers.addCategory} onEdit={handlers.editCategory} onDelete={handlers.deleteCategory} />;
     case "Contas":
-      return <AccountsPage accounts={accounts} customBanks={customBanks} onAdd={handlers.addAccount} onEdit={handlers.editAccount} onDelete={handlers.deleteAccount} />;
+      return <AccountsPage accounts={accounts} customBanks={customBanks} transactions={transactions} onAdd={handlers.addAccount} onEdit={handlers.editAccount} onDelete={handlers.deleteAccount} />;
     case "Cartões":
       return <CardsPage cards={cards} customBanks={customBanks} transactions={transactions} onAdd={handlers.addCard} onEdit={handlers.editCard} onDelete={handlers.deleteCard} onPayCard={handlers.payCard} />;
     case "Planejamento":
-      return <PlanningPage plans={plans} transactions={transactions} onAdd={handlers.addPlan} onEdit={handlers.editPlan} onDelete={handlers.deletePlan} />;
+      return <PlanningPage plans={plans} transactions={transactions} categories={categories} onAdd={handlers.addPlan} onEdit={handlers.editPlan} onDelete={handlers.deletePlan} />;
     case "Metas":
       return <GoalsPage goals={goals} onAdd={handlers.addGoal} onEdit={handlers.editGoal} onDelete={handlers.deleteGoal} />;
     default:

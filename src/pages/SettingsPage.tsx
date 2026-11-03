@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { KeyRound, Moon, RotateCcw, ShieldCheck, Sun } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle, KeyRound, Moon, RotateCcw, ShieldCheck, Sun } from "lucide-react";
 import type { DashboardWidget } from "../types/finance";
 
 type SettingsPageProps = {
@@ -8,33 +8,26 @@ type SettingsPageProps = {
   onToggleDarkMode: () => void;
   dashboardWidgets: DashboardWidget[];
   onToggleDashboardWidget: (widget: DashboardWidget) => void;
-  onUpdatePassword: (password: string) => Promise<void>;
+  onSendPasswordReset: (email: string) => Promise<void>;
   onResetBalance: () => void;
 };
 
 // Preferências do tema e segurança da conta.
-export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidgets, onToggleDashboardWidget, onUpdatePassword, onResetBalance }: SettingsPageProps) {
+export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidgets, onToggleDashboardWidget, onSendPasswordReset, onResetBalance }: SettingsPageProps) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function changePassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function requestPasswordReset() {
     setMessage("");
     setError("");
-    const form = new FormData(event.currentTarget);
-    const password = String(form.get("password") ?? "");
-    if (password !== String(form.get("password-confirm") ?? "")) {
-      setError("As senhas não conferem.");
-      return;
-    }
+    if (!email) return;
     setBusy(true);
     try {
-      await onUpdatePassword(password);
-      setMessage("Senha atualizada com sucesso.");
-      event.currentTarget.reset();
+      await onSendPasswordReset(email);
+      setMessage("Enviamos um código de recuperação para seu e-mail.");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Não foi possível atualizar a senha.");
+      setError(reason instanceof Error ? reason.message : "Não foi possível enviar o código de recuperação.");
     } finally {
       setBusy(false);
     }
@@ -79,13 +72,13 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
             <div><h2>Conta e segurança</h2><p>{email ? `Conta conectada: ${email}` : "Conta Fluxary.ia conectada."}</p></div>
           </div>
           {email ? (
-            <form className="settings-password-form" onSubmit={changePassword}>
-              {message && <div className="auth-success" role="status">{message}</div>}
-              {error && <div className="auth-message" role="alert">{error}</div>}
-              <label>Nova senha<input name="password" type="password" minLength={8} required autoComplete="new-password" /></label>
-              <label>Confirme a nova senha<input name="password-confirm" type="password" minLength={8} required autoComplete="new-password" /></label>
-              <button className="button-primary" type="submit" disabled={busy}><KeyRound size={14} />{busy ? "Salvando..." : "Alterar senha"}</button>
-            </form>
+            <div className="settings-password-form">
+              {message && <div className="auth-feedback auth-feedback-success" role="status"><ShieldCheck size={16} /><span>{message}</span></div>}
+              {error && <div className="auth-feedback auth-feedback-error" role="alert"><AlertCircle size={16} /><span>{error}</span></div>}
+              <button className="button-primary" type="button" onClick={() => void requestPasswordReset()} disabled={busy}>
+                <KeyRound size={14} />{busy ? "Enviando..." : "Redefinir senha por e-mail"}
+              </button>
+            </div>
           ) : <div className="settings-local-note">A conta atual não possui um endereço de e-mail associado.</div>}
         </article>
         <article className="panel settings-card settings-reset-card">

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { CategoryGlyph } from "../components/CategoryGlyph";
+import { StyledSelect } from "../components/StyledSelect";
 import { CATEGORY_COLORS, CATEGORY_ICONS } from "../data/categories";
 import type { Category, Transaction, TransactionType } from "../types/finance";
 
@@ -76,8 +77,14 @@ export function CategoryModal({ category, initialType, onClose, onSubmit }: {
   onClose: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }) {
+  const [categoryType, setCategoryType] = useState(category?.type ?? initialType);
   const iconChoices = [...new Set([...(category ? [category.emoji] : []), ...CATEGORY_ICONS])];
   const colorChoices = [...new Set([...(category ? [category.color] : []), ...CATEGORY_COLORS])];
+
+  useEffect(() => {
+    setCategoryType(category?.type ?? initialType);
+  }, [category?.id, category?.type, initialType]);
+
   return (
     <div className="modal-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
@@ -88,7 +95,18 @@ export function CategoryModal({ category, initialType, onClose, onSubmit }: {
           <button type="button" className="icon-button" aria-label="Fechar" onClick={onClose}>×</button>
         </div>
         <label>Nome da categoria<input name="category-name" required maxLength={32} defaultValue={category?.name ?? ""} placeholder="Ex.: Pets" autoFocus /></label>
-        <label>Tipo<select name="category-type" defaultValue={category?.type ?? initialType}><option value="expense">Despesa</option><option value="income">Receita</option></select></label>
+        <label>Tipo
+          <StyledSelect
+            name="category-type"
+            value={categoryType}
+            ariaLabel="Tipo de categoria"
+            options={[
+              { value: "expense", label: "Despesa" },
+              { value: "income", label: "Receita" },
+            ]}
+            onChange={(value) => setCategoryType(value as TransactionType)}
+          />
+        </label>
         <fieldset className="category-choice-field">
           <legend>Escolha um ícone</legend>
           <div className="emoji-choices">

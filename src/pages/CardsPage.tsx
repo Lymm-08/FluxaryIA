@@ -23,7 +23,7 @@ export function CardsPage({ cards, customBanks, transactions, onAdd, onEdit, onD
             key={card.id}
             icon={<BankLogo bankId={card.bankId} customBanks={customBanks} />}
             title={`${card.issuer}${cards.filter((item) => item.issuer === card.issuer).length > 1 ? ` · ${index + 1}` : ""}`}
-            subtitle={`${money.format(usage.used)} usados · ${money.format(usage.available)} disponíveis`}
+            subtitle={`${money.format(usage.used)} usados · ${usage.available < 0 ? `${money.format(Math.abs(usage.available))} acima do limite` : `${money.format(usage.available)} disponíveis`}`}
             value={`Limite ${money.format(card.creditLimit)}`}
             progress={usage.progress}
             progressLabel={`${money.format(usage.used)} utilizados`}

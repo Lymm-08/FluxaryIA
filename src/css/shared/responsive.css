@@ -262,6 +262,14 @@
     padding: 19px;
   }
 
+  .transaction-details-actions {
+    justify-content: stretch;
+  }
+
+  .transaction-details-actions > button {
+    flex: 1 1 auto;
+  }
+
   .form-grid {
     gap: 9px;
   }

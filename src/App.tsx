@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { DashboardPage } from "./pages/DashboardPage";
 import { AppShell, ErrorNotice } from "./components/AppShell";
 import { BudgetModal } from "./components/BudgetModal";
@@ -13,16 +13,17 @@ import { AuthPage } from "./auth/AuthPage";
 import { useAuth } from "./auth/AuthProvider";
 import { SettingsPage } from "./pages/SettingsPage";
 import type {
-  Account, BudgetPlan, Category, CreditCardItem, FinancialGoal, Transaction, TransactionType,
+  Account, BudgetPlan, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
 } from "./types/finance";
-import { calculateTotals, getCardUsage } from "./utils/finance";
-import { localDateString } from "./utils/format";
+import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage } from "./utils/finance";
+import { localDateString, parseAmount } from "./utils/format";
 import { money } from "./utils/format";
 import type { MascotExpression } from "./components/MascotCompanion";
 import { MovementsPage } from "./pages/MovementsPage";
+import { ConfirmDialog } from "./components/ConfirmDialog";
+import { TransactionDetailsModal } from "./components/TransactionDetailsModal";
 
-type MascotFeedback = { expression: MascotExpression; message: string };
-
+type ConfirmationRequest = { title: string; message: string; confirmLabel: string; danger: boolean };
 // Decide entre conta autenticada, recuperação de senha e modo local.
 function App() {
   const auth = useAuth();
@@ -31,36 +32,43 @@ function App() {
   if (auth.passwordRecovery) {
     return <AuthPage
       key="password-recovery"
-      configured={auth.configured} recovery onSignIn={auth.signIn} onSignUp={auth.signUp}
+      configured={auth.configured} recovery recoveryEmail={auth.recoveryEmail} recoveryStep={auth.recoveryStep}
+      onSignIn={auth.signIn} onSignUp={auth.signUp}
       onGoogleSignIn={auth.signInWithGoogle} onSendPasswordReset={auth.sendPasswordReset}
+      onVerifyEmailCode={auth.verifyEmailCode} onResendEmailCode={auth.resendEmailCode}
       onUpdatePassword={auth.updatePassword} onRecoveryComplete={auth.finishPasswordRecovery}
     />;
   }
+
   if (!auth.user) {
     return <AuthPage
       key="sign-in"
-      configured={auth.configured} recovery={false} onSignIn={auth.signIn} onSignUp={auth.signUp}
+      configured={auth.configured} recovery={false} recoveryEmail="" recoveryStep="code"
+      onSignIn={auth.signIn} onSignUp={auth.signUp}
       onGoogleSignIn={auth.signInWithGoogle} onSendPasswordReset={auth.sendPasswordReset}
+      onVerifyEmailCode={auth.verifyEmailCode} onResendEmailCode={auth.resendEmailCode}
       onUpdatePassword={auth.updatePassword} onRecoveryComplete={auth.finishPasswordRecovery}
     />;
   }
   return <FinanceWorkspace
     userId={auth.user?.id ?? null} userEmail={auth.user?.email ?? null}
+    onSendPasswordReset={auth.sendPasswordReset}
     onSignOut={async () => {
       await auth.signOut();
     }}
-    onUpdatePassword={auth.updatePassword}
   />;
 }
 
 // Estado financeiro isolado da tela de autenticação para não misturar dados entre contas.
-function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
+function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }: {
   userId: string | null;
   userEmail: string | null;
+  onSendPasswordReset: (email: string) => Promise<void>;
   onSignOut: () => Promise<void>;
-  onUpdatePassword: (password: string) => Promise<void>;
 }) {
   const [error, setError] = useState("");
+  const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
+  const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
   const reportError = useCallback((message: string) => setError(message), []);
   const finance = useFinanceData(reportError, userId);
   const [page, setPage] = useState("Visão geral");
@@ -71,6 +79,8 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     month: localDateString(new Date()).slice(0, 7), type: "all",
   });
   const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [balanceMode, setBalanceMode] = useState<BalanceMode | null>(null);
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -79,31 +89,117 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
   const [transactionType, setTransactionType] = useState<TransactionType>("expense");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedCreditCardId, setSelectedCreditCardId] = useState("");
+  const [selectedAccountId, setSelectedAccountId] = useState("");
   const [cardPaymentTarget, setCardPaymentTarget] = useState<CreditCardItem | null>(null);
   const [entryType, setEntryType] = useState<FinanceEntryType | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<FinanceEntry>(null);
-  const [mascotFeedback, setMascotFeedback] = useState<MascotFeedback | null>(null);
+
+  function askConfirmation(request: ConfirmationRequest): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirmationResolver.current?.(false);
+      confirmationResolver.current = resolve;
+      setConfirmation(request);
+    });
+  }
+
+  function settleConfirmation(confirmed: boolean) {
+    const resolve = confirmationResolver.current;
+    confirmationResolver.current = null;
+    setConfirmation(null);
+    resolve?.(confirmed);
+  }
+
+  useEffect(() => {
+    const currentState = window.history.state;
+    if (!currentState?.fluxaryApp) {
+      window.history.replaceState({ ...currentState, fluxaryApp: true, page }, "", window.location.href);
+    }
+
+    function restorePage(event: PopStateEvent) {
+      const state = event.state as { fluxaryApp?: boolean; page?: string; movementFilter?: typeof movementFilter } | null;
+      if (!state?.fluxaryApp || !state.page) return;
+      setPage(state.page);
+      if (state.movementFilter) setMovementFilter(state.movementFilter);
+      setMobileMenuOpen(false);
+    }
+
+    window.addEventListener("popstate", restorePage);
+    return () => window.removeEventListener("popstate", restorePage);
+  }, []);
 
   const totals = useMemo(
     () => calculateTotals(finance.transactions, finance.accounts),
     [finance.accounts, finance.transactions],
   );
+  const projectedBalance = useMemo(
+    () => calculateProjectedBalance(finance.transactions, finance.accounts, finance.cards),
+    [finance.accounts, finance.cards, finance.transactions],
+  );
+  const today = localDateString(new Date());
   const monthlyBudget = finance.monthlyBudget;
   const budgetExceeded = monthlyBudget !== null && totals.expenses > monthlyBudget;
-  const mascotExpression: MascotExpression = budgetExceeded ? "alert" : mascotFeedback?.expression ?? "neutral";
+  const creditUsage = finance.cards.reduce((total, card) => total + getCardUsage(card, finance.transactions).used, 0);
+  const creditLimit = finance.cards.reduce((total, card) => total + card.creditLimit, 0);
+  const creditUtilization = creditLimit > 0 ? creditUsage / creditLimit : 0;
+  const dashboardTransactions = finance.transactions.filter((item) => item.transaction_date.startsWith(today.slice(0, 7)));
+  const selectedTransaction = finance.transactions.find((item) => item.id === selectedTransactionId) ?? null;
+  const notifications = useMemo((): FinanceNotification[] => {
+    const plannedTransactions = finance.transactions
+      .filter((transaction) => transaction.isSettled === false)
+      .sort((left, right) => left.transaction_date.localeCompare(right.transaction_date))
+      .map((transaction): FinanceNotification => ({
+        id: `transaction-${transaction.id}`,
+        title: `${transaction.transaction_date < today ? (transaction.type === "income" ? "Receita pendente" : "Despesa pendente") : transaction.type === "income" ? "Receita prevista" : "Despesa agendada"} · ${transaction.description}`,
+        message: `${showValues ? money.format(transaction.amount) : "Valor oculto"} em ${formatNotificationDate(transaction.transaction_date)}`,
+        tone: transaction.type === "income" ? "success" : "warning",
+        transactionId: transaction.id,
+        actionLabel: transaction.type === "income" ? "Marcar como recebida" : "Marcar como paga",
+      }));
+    const financeAlerts: FinanceNotification[] = [];
+    if (totals.balance < 0) {
+      financeAlerts.push({ id: "balance-negative", title: "Saldo atual negativo", message: "Revise suas contas e movimentações pendentes.", tone: "danger" });
+    }
+    if (budgetExceeded) {
+      financeAlerts.push({ id: "budget-exceeded", title: "Limite mensal ultrapassado", message: "As despesas realizadas passaram do planejamento mensal.", tone: "warning" });
+    }
+    if (creditUtilization >= 0.85) {
+      financeAlerts.push({ id: "credit-near-limit", title: "Limite de crédito quase esgotado", message: "O uso dos cartões está acima de 85% do limite disponível.", tone: "warning" });
+    }
+    const cardNotices = finance.cards.flatMap((card): FinanceNotification[] => {
+      const notice = getCardBillingNotice(card, finance.transactions, new Date(), showValues);
+      if (notice.title.startsWith("Fechamento em")) return [];
+      return [{
+        id: `card-${card.id}`,
+        title: `${card.issuer} · ${notice.title}`,
+        message: notice.message,
+        tone: notice.tone,
+      }];
+    });
+    return [...financeAlerts, ...cardNotices, ...plannedTransactions];
+  }, [budgetExceeded, creditUtilization, finance.cards, finance.transactions, showValues, today, totals.balance]);
+  const financialAlert = totals.balance < 0
+    || budgetExceeded
+    || (totals.income > 0 && totals.expenses > totals.income && totals.balance <= totals.income * 0.15)
+    || creditUtilization >= 0.85;
+  const financialHealthGood = totals.balance >= Math.max(1000, totals.expenses * 2)
+    || (totals.balance > 0
+    && (totals.income === 0 ? totals.expenses === 0 : totals.expenses <= totals.income * 0.7)
+    && !budgetExceeded
+    && creditUtilization < 0.65);
+  const mascotExpression: MascotExpression = financialAlert ? "alert" : financialHealthGood ? "approval" : "encouragement";
   const mascotMessage = budgetExceeded
     ? `As despesas do mês passaram do limite de ${money.format(monthlyBudget)}.`
-    : mascotFeedback?.message ?? "Estou por aqui para acompanhar seu mês.";
+    : totals.balance < 0
+      ? "Seu saldo está negativo. Vamos rever as despesas e recuperar o equilíbrio."
+      : creditUtilization >= 0.85
+        ? "O limite dos cartões está quase todo usado. Acompanhe as próximas faturas."
+        : financialHealthGood
+          ? "Suas contas estão equilibradas. Continue nesse ritmo!"
+          : "Vamos acompanhar receitas, despesas e saldo para manter tudo em equilíbrio.";
 
   useEffect(() => {
     document.documentElement.dataset.theme = finance.darkMode ? "dark" : "light";
   }, [finance.darkMode]);
-
-  useEffect(() => {
-    if (!mascotFeedback) return;
-    const timeout = window.setTimeout(() => setMascotFeedback(null), 4200);
-    return () => window.clearTimeout(timeout);
-  }, [mascotFeedback]);
 
   if (finance.loading) return <div className="screen-state">Carregando seus dados financeiros...</div>;
   if (finance.loadError) return (
@@ -115,18 +211,33 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
   );
 
   // Navegação e inicialização de formulários.
-  function navigateToPage(nextPage: string) {
-    if (nextPage === "Visão geral" && page !== "Visão geral") {
-      setMascotFeedback({ expression: "welcome", message: "Que bom ter você por aqui! Vamos cuidar do seu mês?" });
+  function navigateToPage(nextPage: string, nextMovementFilter = movementFilter) {
+    if (nextPage !== page) {
+      window.history.pushState(
+        { fluxaryApp: true, page: nextPage, movementFilter: nextMovementFilter },
+        "",
+        window.location.href,
+      );
+    } else {
+      window.history.replaceState(
+        { fluxaryApp: true, page: nextPage, movementFilter: nextMovementFilter },
+        "",
+        window.location.href,
+      );
     }
     setPage(nextPage);
     setMobileMenuOpen(false);
   }
 
-  function openTransactionForm() {
-    setTransactionType("expense");
-    setSelectedCategoryId(finance.categories.find((category) => category.type === "expense")?.id ?? "");
-    setSelectedCreditCardId(finance.cards[0]?.id ?? "");
+  function openTransactionForm(transaction: Transaction | null = null) {
+    setTransactionToEdit(transaction);
+    setTransactionType(transaction?.type ?? "expense");
+    setSelectedCategoryId(transaction?.categoryId
+      ?? finance.categories.find((category) => category.type === (transaction?.type ?? "expense") && category.name === transaction?.category)?.id
+      ?? finance.categories.find((category) => category.type === (transaction?.type ?? "expense"))?.id
+      ?? "");
+    setSelectedCreditCardId(transaction?.creditCardId ?? finance.cards[0]?.id ?? "");
+    setSelectedAccountId(transaction?.accountId ?? finance.accounts[0]?.id ?? "");
     setBalanceMode(null);
     setShowTransactionForm(true);
   }
@@ -146,10 +257,6 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     if (difference === 0) {
       setBalanceMode(null);
       setError("");
-      setMascotFeedback({
-        expression: "approval",
-        message: action === "reset" ? "O saldo deste mês já está zerado." : "O saldo já está neste valor.",
-      });
       return;
     }
 
@@ -174,20 +281,29 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     );
     setBalanceMode(null);
     setError("");
-    setMascotFeedback({
-      expression: "approval",
-      message: action === "initial" ? "Saldo inicial adicionado." : action === "reset" ? "Saldo do mês zerado; seu histórico foi preservado." : "Saldo atualizado.",
-    });
   }
 
-  function resetMonthlyBalance() {
-    if (!window.confirm("Zerar o saldo do mês atual?\n\nSeus lançamentos e o histórico serão preservados; um ajuste será registrado para deixar o saldo em R$ 0,00.")) return;
+  async function resetMonthlyBalance() {
+    const confirmed = await askConfirmation({
+      title: "Zerar o saldo atual?",
+      message: "Seus lançamentos e o histórico serão preservados. Um ajuste será registrado para deixar o saldo em R$ 0,00.",
+      confirmLabel: "Zerar saldo",
+      danger: true,
+    });
+    if (!confirmed) return;
     saveBalance(0, "adjust", "reset");
   }
 
   function openMonthlyMovements(type: TransactionType) {
-    setMovementFilter({ month: localDateString(new Date()).slice(0, 7), type });
-    navigateToPage("Movimentações");
+    const filter = { month: localDateString(new Date()).slice(0, 7), type };
+    setMovementFilter(filter);
+    navigateToPage("Movimentações", filter);
+  }
+
+  function openAllMonthlyMovements() {
+    const filter = { month: today.slice(0, 7), type: "all" as const };
+    setMovementFilter(filter);
+    navigateToPage("Movimentações", filter);
   }
 
   function toggleSidebar() {
@@ -206,77 +322,190 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     setEntryToEdit(entry);
   }
 
+  function openCardPayment(card: CreditCardItem) {
+    setSelectedAccountId(finance.accounts[0]?.id ?? "");
+    setCardPaymentTarget(card);
+  }
+
   function closeFinanceEntry() {
     setEntryType(null);
     setEntryToEdit(null);
   }
 
   // Lançamentos, categorias e limites mensais.
-  function createTransaction(event: FormEvent<HTMLFormElement>) {
+  async function createTransaction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const date = String(formData.get("transaction_date"));
+    const isScheduled = date > localDateString(new Date()) || transactionToEdit?.isSettled === false;
     const category = finance.categories.find((item) => item.id === selectedCategoryId && item.type === transactionType);
-    const amount = Number(formData.get("amount"));
-    const usesCard = transactionType === "expense" && formData.get("payment-method") === "card";
-    const card = usesCard ? finance.cards.find((item) => item.id === String(formData.get("credit-card-id"))) : undefined;
-    const installmentCount = usesCard ? Number(formData.get("installment-count")) : 1;
+    const amount = parseAmount(String(formData.get("amount") ?? ""));
+    const paymentMethod = String(formData.get("payment-method") ?? "account");
+    const usesCard = transactionType === "expense" && paymentMethod === "card";
+    const isCardPayment = transactionType === "expense" && paymentMethod === "payment";
+    const accountId = !usesCard
+      ? String(formData.get("account-id") || selectedAccountId)
+      : "";
+    const account = accountId ? finance.accounts.find((item) => item.id === accountId) : undefined;
+    const card = usesCard || isCardPayment ? finance.cards.find((item) => item.id === String(formData.get("credit-card-id"))) : undefined;
+    const installmentCount = usesCard
+      ? Number(formData.get("installment-count") ?? transactionToEdit?.installmentCount ?? 1)
+      : 1;
     if (!category || !Number.isFinite(amount) || amount <= 0) {
       setError("Escolha uma categoria válida e informe um valor maior que zero.");
       return;
     }
-    if (usesCard && !card) {
-      setError("Selecione um cartão cadastrado para esta compra.");
+    if ((usesCard || isCardPayment) && !card) {
+      setError("Selecione um cartão cadastrado para este lançamento.");
       return;
+    }
+    if (!usesCard && !account) {
+      setError(finance.accounts.length
+        ? transactionType === "income"
+          ? "Selecione a conta que receberá esta receita."
+          : "Selecione a conta de onde sairá esta despesa."
+        : "Cadastre uma conta na seção Contas antes de registrar uma receita ou despesa fora do cartão.");
+      return;
+    }
+    if (transactionType === "expense" && !isScheduled && !usesCard && account) {
+      const currentBalance = getAccountBalance(account, finance.transactions);
+      const previousAccountEffect = transactionToEdit?.accountId === account.id
+        && transactionToEdit.creditCardKind !== "purchase"
+        ? transactionToEdit.type === "income" ? -transactionToEdit.amount : transactionToEdit.amount
+        : 0;
+      const availableBeforeEntry = currentBalance + previousAccountEffect;
+      if (amount > availableBeforeEntry && !await askConfirmation({
+        title: "A conta ficará negativa",
+        message: `O lançamento de ${money.format(amount)} é maior que o saldo atual da conta (${money.format(availableBeforeEntry)}). Se continuar, o saldo ficará negativo.`,
+        confirmLabel: "Continuar mesmo assim",
+        danger: true,
+      })) return false;
     }
     if (usesCard && (!Number.isInteger(installmentCount) || installmentCount < 1 || installmentCount > 24)) {
       setError("Informe entre 1 e 24 parcelas.");
       return;
     }
-    if (card && amount > getCardUsage(card, finance.transactions).available) {
-      setError("A compra ultrapassa o limite disponível deste cartão.");
+    const usage = card ? getCardUsage(card, finance.transactions) : null;
+    const previousPurchase = transactionToEdit?.creditCardKind === "purchase"
+      && transactionToEdit.creditCardId === card?.id
+      ? transactionToEdit.amount
+      : 0;
+    const previousPayment = transactionToEdit?.creditCardKind === "payment"
+      && transactionToEdit.creditCardId === card?.id
+      ? transactionToEdit.amount
+      : 0;
+    if (usesCard && !isScheduled && usage && amount > usage.available + previousPurchase - previousPayment) {
+      const availableBeforePurchase = usage.available + previousPurchase - previousPayment;
+      if (!await askConfirmation({
+        title: "Compra acima do limite",
+        message: `Esta compra de ${money.format(amount)} ultrapassa o limite disponível do cartão (${money.format(availableBeforePurchase)}). Se continuar, o cartão ficará acima do limite.`,
+        confirmLabel: "Continuar com a compra",
+        danger: true,
+      })) return false;
+    }
+    if (!isScheduled && isCardPayment && usage && amount > usage.used + previousPayment - previousPurchase) {
+      setError("O pagamento não pode ser maior que o valor em aberto neste cartão.");
       return;
     }
     const description = String(formData.get("description")).trim();
-    const date = String(formData.get("transaction_date"));
-    const installmentGroupId = card && installmentCount > 1 ? crypto.randomUUID() : undefined;
-    const installmentAmounts = splitAmount(amount, installmentCount);
-    const newTransactions: Transaction[] = installmentAmounts.map((installmentAmount, index) => {
-      const installmentNumber = index + 1;
-      return {
-        id: crypto.randomUUID(),
-        description,
-        category: category.name,
-        categoryId: category.id,
-        transaction_date: addMonthsToDate(date, index),
-        amount: installmentAmount,
-        type: transactionType,
-        ...(card ? {
-          creditCardId: card.id,
-          creditCardKind: "purchase" as const,
-          ...(installmentGroupId ? { installmentGroupId } : {}),
-          ...(installmentCount > 1 ? { installmentNumber, installmentCount } : {}),
+    const installmentGroupId = usesCard && installmentCount > 1
+      ? transactionToEdit?.installmentGroupId ?? crypto.randomUUID()
+      : undefined;
+    const installmentAmounts = transactionToEdit ? [amount] : splitAmount(amount, installmentCount);
+    const newTransactions: Transaction[] = installmentAmounts.map((installmentAmount, index) => ({
+      id: transactionToEdit?.id ?? crypto.randomUUID(),
+      description,
+      category: category.name,
+      categoryId: category.id,
+      transaction_date: transactionToEdit ? date : addMonthsToDate(date, index),
+      amount: installmentAmount,
+      type: transactionType,
+      isSettled: transactionToEdit
+        ? transactionToEdit.isSettled !== false
+        : addMonthsToDate(date, index) <= localDateString(new Date()),
+      ...(account ? { accountId: account.id } : {}),
+      ...(card ? {
+        creditCardId: card.id,
+        creditCardKind: isCardPayment ? "payment" as const : "purchase" as const,
+        ...(usesCard && transactionToEdit?.installmentGroupId ? {
+          installmentGroupId: transactionToEdit.installmentGroupId,
+          installmentNumber: transactionToEdit.installmentNumber,
+          installmentCount: transactionToEdit.installmentCount,
+        } : usesCard && installmentGroupId ? {
+          installmentGroupId,
+          installmentNumber: index + 1,
+          installmentCount,
         } : {}),
-      };
-    });
-    const nextTransactions = [...newTransactions, ...finance.transactions].sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
-    const nextTotals = calculateTotals(nextTransactions, finance.accounts);
+      } : {}),
+    }));
+    const nextTransactions = transactionToEdit
+      ? finance.transactions.map((item) => item.id === transactionToEdit.id ? newTransactions[0] : item)
+      : [...newTransactions, ...finance.transactions];
+    nextTransactions.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
     finance.setTransactions(nextTransactions);
     setShowTransactionForm(false);
+    setTransactionToEdit(null);
     setError("");
-    if (monthlyBudget !== null && nextTotals.expenses > monthlyBudget) setMascotFeedback(null);
-    else if (newTransactions[0]?.type === "income" && nextTotals.balance > 0) {
-      setMascotFeedback({ expression: "celebration", message: "Boa! As receitas superaram as despesas deste mês." });
-    } else {
-      setMascotFeedback({ expression: "approval", message: "Lançamento registrado com sucesso!" });
-    }
   }
 
-  function recordCardPayment(amount: number) {
+  async function markTransactionSettled(transactionId: string): Promise<boolean> {
+    const transaction = finance.transactions.find((item) => item.id === transactionId);
+    if (!transaction || transaction.isSettled !== false) return false;
+    if (transaction.creditCardKind === "payment") {
+      const card = finance.cards.find((item) => item.id === transaction.creditCardId);
+      if (card && transaction.amount > getCardUsage(card, finance.transactions).used) {
+        setError("O pagamento agendado é maior que o valor em aberto neste cartão.");
+        return false;
+      }
+    }
+    const account = transaction.accountId
+      ? finance.accounts.find((item) => item.id === transaction.accountId)
+      : undefined;
+    if (transaction.type === "expense" && account) {
+      const accountBalance = getAccountBalance(account, finance.transactions);
+      if (transaction.amount > accountBalance && !await askConfirmation({
+        title: "A conta ficará negativa",
+        message: `O lançamento de ${money.format(transaction.amount)} é maior que o saldo atual da conta (${money.format(accountBalance)}). Se confirmar, o saldo ficará negativo.`,
+        confirmLabel: "Confirmar pagamento",
+        danger: true,
+      })) return false;
+    }
+    finance.setTransactions((current) => current.map((item) =>
+      item.id === transactionId ? { ...item, isSettled: true } : item,
+    ));
+    setError("");
+    return true;
+  }
+
+  async function deleteTransaction(transaction: Transaction) {
+    if (!await askConfirmation({
+      title: "Excluir movimentação?",
+      message: `O lançamento “${transaction.description}” será removido. Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir movimentação",
+      danger: true,
+    })) return;
+    finance.setTransactions((current) => current.filter((item) => item.id !== transaction.id));
+    setError("");
+  }
+
+  async function recordCardPayment(amount: number, accountId: string) {
     const card = cardPaymentTarget;
+    const account = finance.accounts.find((item) => item.id === accountId);
     if (!card || !Number.isFinite(amount) || amount <= 0) {
       setError("Informe um valor válido para o pagamento.");
       return;
     }
+    if (!account) {
+      setError("Selecione a conta usada para pagar a fatura.");
+      return;
+    }
+    const accountBalance = getAccountBalance(account, finance.transactions);
+    if (amount > accountBalance && !await askConfirmation({
+      title: "A conta ficará negativa",
+      message: `O pagamento de ${money.format(amount)} é maior que o saldo atual da conta (${money.format(accountBalance)}). Se continuar, o saldo ficará negativo.`,
+      confirmLabel: "Pagar mesmo assim",
+      danger: true,
+    })) return;
     const usage = getCardUsage(card, finance.transactions);
     if (amount > usage.used) {
       setError("O pagamento não pode ser maior que o valor em aberto neste cartão.");
@@ -295,13 +524,13 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
       transaction_date: localDateString(new Date()),
       amount,
       type: "expense",
+      accountId: account.id,
       creditCardId: card.id,
       creditCardKind: "payment",
     };
     finance.setTransactions((current) => [payment, ...current].sort((a, b) => b.transaction_date.localeCompare(a.transaction_date)));
     setCardPaymentTarget(null);
     setError("");
-    setMascotFeedback({ expression: "approval", message: "Pagamento registrado; o limite do cartão foi atualizado." });
   }
 
   function saveCategory(event: FormEvent<HTMLFormElement>) {
@@ -357,7 +586,7 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     setError("");
   }
 
-  function deleteCategory(category: Category) {
+  async function deleteCategory(category: Category) {
     const remaining = finance.categories.filter((item) => item.type === category.type && item.id !== category.id);
     if (remaining.length === 0) {
       setError("Mantenha pelo menos uma categoria para cada tipo de lançamento.");
@@ -368,7 +597,12 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     const prompt = related.length
       ? `Excluir "${category.name}"? ${related.length} lançamento(s) serão movidos para "${fallback.name}".`
       : `Excluir a categoria "${category.name}"?`;
-    if (!window.confirm(prompt)) return;
+    if (!await askConfirmation({
+      title: "Excluir categoria?",
+      message: prompt,
+      confirmLabel: "Excluir categoria",
+      danger: true,
+    })) return;
     finance.setCategories((current) => current.filter((item) => item.id !== category.id));
     finance.setTransactions((current) => current.map((item) =>
       item.category === category.name && item.type === category.type
@@ -401,7 +635,6 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     finance.setMonthlyBudget(budget);
     setShowBudgetForm(false);
     setError("");
-    setMascotFeedback({ expression: "approval", message: "Seu limite mensal foi atualizado." });
   }
 
   // Criação e edição tipada para contas, cartões, planos e metas.
@@ -426,25 +659,41 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
         const bankId = String(form.get("bankId"));
         if (!bankId || !String(form.get("issuer")).trim()) return setError("Selecione um banco emissor ou cadastre uma instituição personalizada.");
         const issuer = String(form.get("issuer")).trim();
+        const closingDay = Number(form.get("closingDay"));
+        const dueDay = Number(form.get("dueDay"));
         const entry: CreditCardItem = {
           id, name: `Cartão ${issuer}`, issuer, bankId, lastFour: "",
-          creditLimit: Number(form.get("creditLimit")), closingDay: 10, dueDay: 17,
+          creditLimit: Number(form.get("creditLimit")), closingDay, dueDay,
         };
         if (!entry.issuer || !Number.isFinite(entry.creditLimit) || entry.creditLimit <= 0) return setError("Selecione o banco e informe um limite maior que zero.");
+        if (![closingDay, dueDay].every((day) => Number.isInteger(day) && day >= 1 && day <= 31)) {
+          return setError("Informe dias de fechamento e vencimento entre 1 e 31.");
+        }
         finance.setCards((current) => upsert(current, entry));
         break;
       }
       case "plan": {
-        const category = finance.categories.find((item) =>
-          item.type === "expense" && item.name === String(form.get("category")),
-        );
-        const entry: BudgetPlan = {
-          id, category: String(form.get("category")), categoryId: category?.id, limit: Number(form.get("limit")),
-        };
-        if (!entry.category || !entry.categoryId || !Number.isFinite(entry.limit) || entry.limit <= 0) return setError("Escolha uma categoria e um limite válido.");
-        const duplicate = finance.plans.some((plan) => plan.category === entry.category && plan.id !== entry.id);
-        if (duplicate) return setError("Já existe um planejamento para essa categoria.");
-        finance.setPlans((current) => upsert(current, entry));
+        const categoryIds = form.getAll("category-ids").map(String);
+        if (categoryIds.length === 0) return setError("Selecione ao menos uma categoria para o planejamento mensal.");
+        const entries: BudgetPlan[] = [];
+        for (const [index, categoryId] of categoryIds.entries()) {
+          const category = finance.categories.find((item) => item.type === "expense" && item.id === categoryId);
+          const limit = Number(form.get(`limit-${categoryId}`));
+          if (!category || !Number.isFinite(limit) || limit <= 0) {
+            return setError("Escolha uma categoria e informe um limite mensal válido para cada uma.");
+          }
+          const existingPlan = finance.plans.find((plan) => plan.categoryId === category.id || plan.category === category.name);
+          if (existingPlan && existingPlan.id !== entryToEdit?.id) {
+            return setError(`Já existe um planejamento mensal para "${category.name}".`);
+          }
+          entries.push({
+            id: entryToEdit && index === 0 ? entryToEdit.id : existingPlan?.id ?? crypto.randomUUID(),
+            category: category.name,
+            categoryId: category.id,
+            limit,
+          });
+        }
+        finance.setPlans((current) => entries.reduce((updated, entry) => upsert(updated, entry), current));
         break;
       }
       case "goal": {
@@ -462,13 +711,22 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
     setError("");
   }
 
-  function removeEntry(type: FinanceEntryType, item: FinanceEntry) {
+  async function removeEntry(type: FinanceEntryType, item: FinanceEntry) {
     if (!item) return;
+    if (type === "account" && finance.transactions.some((transaction) => transaction.accountId === item.id)) {
+      setError("Esta conta tem movimentações vinculadas. Mantenha-a para preservar o histórico financeiro.");
+      return;
+    }
     if (type === "card" && finance.transactions.some((transaction) => transaction.creditCardId === item.id)) {
       setError("Este cartão tem compras ou pagamentos no histórico. Remova os lançamentos vinculados antes de excluí-lo.");
       return;
     }
-    if (!window.confirm(`Excluir "${"name" in item ? item.name : "category" in item ? item.category : ""}"?`)) return;
+    if (!await askConfirmation({
+      title: "Excluir item?",
+      message: `Deseja excluir “${"name" in item ? item.name : "category" in item ? item.category : ""}”? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir",
+      danger: true,
+    })) return;
     if (type === "account") finance.setAccounts((current) => current.filter((entry) => entry.id !== item.id));
     if (type === "card") finance.setCards((current) => current.filter((entry) => entry.id !== item.id));
     if (type === "plan") finance.setPlans((current) => current.filter((entry) => entry.id !== item.id));
@@ -484,7 +742,8 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
       onNavigate={navigateToPage}
       onToggleSidebar={toggleSidebar}
       onMenuClose={() => setMobileMenuOpen(false)}
-      onNotify={() => setError("Você está em dia! Nenhuma notificação nova.")}
+      notifications={notifications}
+      onMarkSettled={(transactionId) => { void markTransactionSettled(transactionId); }}
       onSignOut={() => {
         void onSignOut().catch((reason: unknown) => {
           reportError(reason instanceof Error ? reason.message : "Não foi possível sair da conta.");
@@ -494,16 +753,21 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
       <ErrorNotice message={error} onClose={() => setError("")} />
       {page === "Visão geral" ? (
         <DashboardPage
-          transactions={finance.transactions} totals={totals} monthlyBudget={monthlyBudget} showValues={showValues}
-          cards={finance.cards} customBanks={finance.customBanks} dashboardWidgets={finance.dashboardWidgets}
+          transactions={dashboardTransactions} totals={totals} projectedBalance={projectedBalance} monthlyBudget={monthlyBudget} showValues={showValues}
+          cards={finance.cards} customBanks={finance.customBanks} goals={finance.goals} dashboardWidgets={finance.dashboardWidgets}
           mascotExpression={mascotExpression} mascotMessage={mascotMessage}
           onToggleValues={() => setShowValues((value) => !value)}
-          onAdd={openTransactionForm} onSetBudget={() => setShowBudgetForm(true)} onNavigate={navigateToPage}
-          onOpenMovements={openMonthlyMovements} onPayCard={setCardPaymentTarget} cloudAccount={Boolean(userId)}
+          onAdd={() => openTransactionForm()} onAddGoal={() => openFinanceEntry("goal")}
+          onSetBudget={() => setShowBudgetForm(true)} onNavigate={navigateToPage}
+          onOpenMovements={openMonthlyMovements} onPayCard={openCardPayment} cloudAccount={Boolean(userId)}
+          onOpenTransaction={(transaction) => setSelectedTransactionId(transaction.id)}
+          onOpenTransactions={openAllMonthlyMovements}
         />
       ) : page === "Movimentações" ? (
         <MovementsPage
-          transactions={finance.transactions} showValues={showValues} onAdd={openTransactionForm}
+          transactions={finance.transactions} showValues={showValues} onAdd={() => openTransactionForm()}
+          onEdit={openTransactionForm} onDelete={deleteTransaction}
+          onOpenTransaction={(transaction) => setSelectedTransactionId(transaction.id)}
           initialMonth={movementFilter.month} initialType={movementFilter.type}
         />
       ) : page === "Configurações" ? (
@@ -514,7 +778,7 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
           onToggleDashboardWidget={(widget) => finance.setDashboardWidgets((current) =>
             current.includes(widget) ? current.filter((item) => item !== widget) : [...current, widget],
           )}
-          onUpdatePassword={onUpdatePassword}
+          onSendPasswordReset={onSendPasswordReset}
           onResetBalance={resetMonthlyBalance}
         />
       ) : (
@@ -522,7 +786,7 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
           page={page} transactions={finance.transactions} categories={finance.categories} accounts={finance.accounts}
           cards={finance.cards} customBanks={finance.customBanks} plans={finance.plans} goals={finance.goals}
           handlers={{
-            addTransaction: openTransactionForm,
+            addTransaction: () => openTransactionForm(),
             addCategory: openCategoryForm,
             editCategory: (category) => { setCategoryToEdit(category); setCategoryFormType(category.type); setShowCategoryForm(true); },
             deleteCategory,
@@ -532,7 +796,7 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
             addCard: () => openFinanceEntry("card"),
             editCard: (entry) => openFinanceEntry("card", entry),
             deleteCard: (entry) => removeEntry("card", entry),
-            payCard: setCardPaymentTarget,
+            payCard: openCardPayment,
             addPlan: () => openFinanceEntry("plan"),
             editPlan: (entry) => openFinanceEntry("plan", entry),
             deletePlan: (entry) => removeEntry("plan", entry),
@@ -544,27 +808,56 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
       )}
       {showTransactionForm && (
         <TransactionModal
-          categories={finance.categories} cards={finance.cards} transactions={finance.transactions}
-          selectedCardId={selectedCreditCardId} type={transactionType} categoryId={selectedCategoryId}
+          categories={finance.categories} accounts={finance.accounts} cards={finance.cards} transactions={finance.transactions}
+          transaction={transactionToEdit}
+          selectedAccountId={selectedAccountId} selectedCardId={selectedCreditCardId} type={transactionType} categoryId={selectedCategoryId}
           onTypeChange={(type) => {
             setTransactionType(type);
             setSelectedCategoryId(finance.categories.find((category) => category.type === type)?.id ?? "");
           }}
           onCategoryChange={setSelectedCategoryId}
+          onAccountChange={setSelectedAccountId}
           onCardChange={setSelectedCreditCardId}
-          onClose={() => setShowTransactionForm(false)}
+          onClose={() => { setShowTransactionForm(false); setTransactionToEdit(null); }}
           onSubmit={createTransaction}
           onManageCategories={() => { setShowTransactionForm(false); navigateToPage("Categorias"); }}
+          onManageAccounts={() => { setShowTransactionForm(false); navigateToPage("Contas"); }}
           onBalanceAction={openBalanceForm}
+        />
+      )}
+      {selectedTransaction && (
+        <TransactionDetailsModal
+          transaction={selectedTransaction}
+          account={finance.accounts.find((item) => item.id === selectedTransaction.accountId)}
+          card={finance.cards.find((item) => item.id === selectedTransaction.creditCardId)}
+          showValues={showValues}
+          onClose={() => setSelectedTransactionId(null)}
+          onEdit={() => {
+            setSelectedTransactionId(null);
+            openTransactionForm(selectedTransaction);
+          }}
+          onDelete={() => {
+            setSelectedTransactionId(null);
+            void deleteTransaction(selectedTransaction);
+          }}
+          onSettle={() => {
+            void markTransactionSettled(selectedTransaction.id).then((settled) => {
+              if (settled) setSelectedTransactionId(null);
+            });
+          }}
         />
       )}
       {cardPaymentTarget && (
         <CardPaymentModal
           card={cardPaymentTarget}
           used={getCardUsage(cardPaymentTarget, finance.transactions).used}
+          accounts={finance.accounts}
+          selectedAccountId={selectedAccountId}
+          transactions={finance.transactions}
           customBanks={finance.customBanks}
+          onAccountChange={setSelectedAccountId}
           onClose={() => setCardPaymentTarget(null)}
-          onSubmit={recordCardPayment}
+          onSubmit={(amount, accountId) => recordCardPayment(amount, accountId)}
         />
       )}
       {balanceMode && (
@@ -597,6 +890,13 @@ function FinanceWorkspace({ userId, userEmail, onSignOut, onUpdatePassword }: {
           onClose={closeFinanceEntry} onSubmit={saveFinanceEntry}
         />
       )}
+      {confirmation && (
+        <ConfirmDialog
+          {...confirmation}
+          onConfirm={() => settleConfirmation(true)}
+          onCancel={() => settleConfirmation(false)}
+        />
+      )}
     </AppShell>
   );
 }
@@ -621,6 +921,11 @@ function addMonthsToDate(dateValue: string, monthOffset: number): string {
   const lastDay = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
   targetMonth.setDate(Math.min(day, lastDay));
   return localDateString(targetMonth);
+}
+
+function formatNotificationDate(dateValue: string) {
+  const date = new Date(`${dateValue}T12:00:00`);
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
 export default App;
