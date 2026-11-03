@@ -1,5 +1,5 @@
 import {
-  Bell, BellRing, CircleHelp, CreditCard, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PiggyBank,
+  Bell, BellRing, CreditCard, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PiggyBank,
   Settings, Sparkles, Tags, Target, TrendingUp, Wallet, X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -67,16 +67,13 @@ export function AppShell({ page, mobileMenuOpen, sidebarCollapsed, userEmail, no
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="sidebar-utility-nav">
-            <button className={`nav-item ${page === "Configurações" ? "nav-item-active" : ""}`} onClick={() => onNavigate("Configurações")} title={sidebarCollapsed ? "Configurações" : undefined}>
+          <div className="sidebar-account-actions">
+            <button className={`nav-item sidebar-settings-button ${page === "Configurações" ? "nav-item-active" : ""}`} onClick={() => onNavigate("Configurações")} title={sidebarCollapsed ? "Configurações" : undefined}>
               <Settings size={15} strokeWidth={1.8} /><span>Configurações</span>
             </button>
-            <button className="nav-item" title={sidebarCollapsed ? "Central de ajuda" : undefined}>
-              <CircleHelp size={15} strokeWidth={1.8} /><span>Central de ajuda</span>
-            </button>
+            {userEmail && <button className="nav-item signout-button" onClick={onSignOut} title={sidebarCollapsed ? "Sair da conta" : undefined}><LogOut size={15} /><span>Sair da conta</span></button>}
           </div>
           <div className="profile"><div className="avatar">{userEmail?.slice(0, 1).toUpperCase() ?? "F"}</div><div className="profile-text"><strong>{userEmail ?? "Minha conta"}</strong><span>Conta Fluxary.ia</span></div></div>
-          {userEmail && <button className="nav-item signout-button" onClick={onSignOut}><LogOut size={15} /><span>Sair da conta</span></button>}
         </div>
       </aside>
       <main className="main-content">

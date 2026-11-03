@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertCircle, KeyRound, Moon, RotateCcw, ShieldCheck, Sun } from "lucide-react";
+import { AlertCircle, CircleHelp, KeyRound, Moon, RotateCcw, ShieldCheck, Sun } from "lucide-react";
 import type { DashboardWidget } from "../types/finance";
 
 type SettingsPageProps = {
@@ -89,6 +89,26 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
           <button className="button-secondary settings-reset-button" type="button" onClick={onResetBalance}>
             <RotateCcw size={14} /> Zerar saldo do mês
           </button>
+        </article>
+        <article className="panel settings-card settings-help-card">
+          <div className="settings-card-heading">
+            <span className="settings-icon"><CircleHelp size={17} /></span>
+            <div><h2>Central de ajuda</h2><p>Encontre orientações rápidas para usar seus recursos financeiros.</p></div>
+          </div>
+          <div className="settings-help-list">
+            <details className="settings-help-item">
+              <summary>Como registrar uma receita ou despesa?</summary>
+              <p>Toque em “Novo lançamento”, escolha receita ou despesa, informe o valor e a categoria. Para movimentações fora do cartão, selecione a conta correspondente.</p>
+            </details>
+            <details className="settings-help-item">
+              <summary>Como funcionam as Caixinhas?</summary>
+              <p>Ao guardar dinheiro, o valor é transferido da conta selecionada para a Caixinha. Ao retirar, escolha a conta que receberá o valor. As duas operações aparecem em Movimentações e não são receitas ou despesas.</p>
+            </details>
+            <details className="settings-help-item">
+              <summary>Como confirmar uma movimentação agendada?</summary>
+              <p>Abra o sino de notificações e marque a receita como recebida ou a despesa como paga. Até a confirmação, ela não altera o saldo atual.</p>
+            </details>
+          </div>
         </article>
       </div>
     </section>

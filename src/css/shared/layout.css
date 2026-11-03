@@ -99,10 +99,22 @@
   margin-top: auto;
 }
 
-.sidebar-utility-nav {
+.sidebar-account-actions {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   margin-bottom: 12px;
+}
+
+.sidebar-account-actions .nav-item {
+  justify-content: center;
+  gap: 7px;
+  padding: 0 7px;
+  white-space: nowrap;
+}
+
+.sidebar-settings-button {
+  min-width: 0;
 }
 
 .sidebar-collapsed {

@@ -148,9 +148,18 @@
 
 [data-theme="dark"] .transaction-row, [data-theme="dark"] .category-row, [data-theme="dark"] .movement-tabs,
 [data-theme="dark"] .theme-setting, [data-theme="dark"] .settings-local-note,
+[data-theme="dark"] .settings-help-item,
 [data-theme="dark"] .category-tabs, [data-theme="dark"] .month-switcher,
 [data-theme="dark"] .dashboard-credit-card, [data-theme="dark"] .dashboard-card-empty {
   border-color: #2b3b33;
+}
+
+[data-theme="dark"] .settings-help-item summary {
+  color: #cbd8d0;
+}
+
+[data-theme="dark"] .settings-help-item p {
+  color: #9aa9a0;
 }
 
 [data-theme="dark"] .transaction-description strong, [data-theme="dark"] .transaction-amount,
