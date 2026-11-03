@@ -245,6 +245,54 @@
   margin-top: 12px;
 }
 
+.auth-otp-label {
+  display: grid;
+  gap: 7px;
+  color: #51645a;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.login-card .auth-otp-input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #cfe2d7;
+  border-radius: 16px;
+  outline: 0;
+  color: #17684f;
+  background: #ffffffdc;
+  font: 800 20px "Manrope", sans-serif;
+  letter-spacing: .45em;
+  text-align: center;
+}
+
+.login-card .auth-otp-input:focus {
+  border-color: #52a98a;
+  box-shadow: 0 0 0 3px #17856715;
+}
+
+.auth-code-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.auth-code-actions button {
+  padding: 3px 0;
+  border: 0;
+  color: #087c58;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.auth-code-actions button:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
 .login-card .auth-form label.auth-input-wrap {
   min-width: 0;
   min-height: 41px;
@@ -407,20 +455,32 @@
   font-weight: 800;
 }
 
-.login-card .auth-message, .login-card .auth-success {
+.login-card .auth-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin: 10px 0 0;
-  padding: 9px 10px;
-  border-radius: 9px;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   font-size: 10px;
   line-height: 1.5;
+  text-align: left;
 }
 
-.login-card .auth-message {
+.login-card .auth-feedback svg {
+  flex: 0 0 16px;
+  margin-top: 1px;
+}
+
+.login-card .auth-feedback-error {
   color: #9d543f;
+  border-color: #f0d2c8;
   background: #fff2ec;
 }
 
-.auth-success {
+.login-card .auth-feedback-success {
   color: #126b4f;
+  border-color: #ccebd9;
   background: #e3f6eb;
 }

@@ -1,22 +1,28 @@
 import { useLayoutEffect, useState, type FormEvent } from "react";
-import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Shield, TrendingUp, UserRound, Zap } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, LockKeyhole, ShieldCheck, Shield, TrendingUp, UserRound, Zap } from "lucide-react";
+import { getRememberSessionPreference } from "../lib/auth-storage";
 
 type AuthPageProps = {
   configured: boolean;
   recovery: boolean;
-  onSignIn: (email: string, password: string) => Promise<void>;
+  recoveryEmail: string;
+  recoveryStep: "code" | "password";
+  onSignIn: (email: string, password: string, rememberSession: boolean) => Promise<void>;
   onSignUp: (name: string, email: string, password: string) => Promise<boolean>;
   onGoogleSignIn: () => Promise<void>;
   onSendPasswordReset: (email: string) => Promise<void>;
+  onVerifyEmailCode: (email: string, token: string, type: "signup" | "recovery") => Promise<void>;
+  onResendEmailCode: (email: string, type: "signup" | "recovery") => Promise<void>;
   onUpdatePassword: (password: string) => Promise<void>;
   onRecoveryComplete: () => void;
 };
 
-type AuthMode = "login" | "register" | "forgot";
+type AuthMode = "login" | "register" | "forgot" | "verify-signup" | "verify-recovery";
 
 // Login, cadastro e recuperação de senha da conta Supabase.
 export function AuthPage({
-  configured, recovery, onSignIn, onSignUp, onGoogleSignIn, onSendPasswordReset, onUpdatePassword, onRecoveryComplete,
+  configured, recovery, recoveryEmail, recoveryStep, onSignIn, onSignUp, onGoogleSignIn, onSendPasswordReset,
+  onVerifyEmailCode, onResendEmailCode, onUpdatePassword, onRecoveryComplete,
 }: AuthPageProps) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -24,6 +30,11 @@ export function AuthPage({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberSession, setRememberSession] = useState(getRememberSessionPreference);
+
+  useLayoutEffect(() => {
+    if (recovery) setEmail(recoveryEmail);
+  }, [recovery, recoveryEmail]);
 
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = "light";
@@ -33,31 +44,75 @@ export function AuthPage({
     event.preventDefault();
     setError("");
     setMessage("");
-    setBusy(true);
     const form = new FormData(event.currentTarget);
-    const formEmail = String(form.get("email") ?? email).trim();
+    const formEmail = String(form.get("email") ?? email ?? recoveryEmail).trim();
+    const formElement = event.currentTarget;
+    const emailField = formElement.elements.namedItem("email");
+    if (emailField instanceof HTMLInputElement && !emailField.checkValidity()) {
+      setError("Digite um endereço de e-mail válido, como nome@exemplo.com.");
+      return;
+    }
+    if (!formElement.checkValidity()) {
+      const invalidField = formElement.querySelector(":invalid");
+      setError(invalidField instanceof HTMLInputElement && invalidField.name === "otp"
+        ? "Digite o código de verificação enviado para seu e-mail."
+        : "Confira os campos obrigatórios. A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    if (!recovery && (mode === "verify-signup" || mode === "verify-recovery") && !formEmail) {
+      setError("Informe o e-mail que recebeu o código.");
+      return;
+    }
+    setBusy(true);
     setEmail(formEmail);
     try {
       if (recovery) {
-        const password = String(form.get("password") ?? "");
-        if (password !== String(form.get("password-confirm") ?? "")) throw new Error("As senhas não conferem.");
-        await onUpdatePassword(password);
-        onRecoveryComplete();
+        if (recoveryStep === "code") {
+          await onVerifyEmailCode(formEmail, String(form.get("otp") ?? ""), "recovery");
+        } else {
+          const password = String(form.get("password") ?? "");
+          if (password !== String(form.get("password-confirm") ?? "")) throw new Error("As senhas não conferem.");
+          await onUpdatePassword(password);
+          onRecoveryComplete();
+        }
+        return;
+      }
+      if (mode === "verify-signup" || mode === "verify-recovery") {
+        await onVerifyEmailCode(formEmail, String(form.get("otp") ?? ""), mode === "verify-signup" ? "signup" : "recovery");
+        if (mode === "verify-signup") setMessage("E-mail confirmado! Sua conta está pronta.");
         return;
       }
       if (mode === "forgot") {
         await onSendPasswordReset(formEmail);
-        setMessage("Se esse e-mail estiver cadastrado, você receberá um link para redefinir sua senha.");
+        setMode("verify-recovery");
+        setMessage("Se esse e-mail estiver cadastrado, enviaremos um código para redefinir sua senha.");
       } else if (mode === "register") {
         const password = String(form.get("password") ?? "");
         if (password !== String(form.get("password-confirm") ?? "")) throw new Error("As senhas não conferem.");
         const hasSession = await onSignUp(String(form.get("name") ?? "").trim(), formEmail, password);
-        if (!hasSession) setMessage("Cadastro recebido. Confira seu e-mail para confirmar a conta e depois entre.");
+        if (!hasSession) {
+          setMode("verify-signup");
+          setMessage("Enviamos um código de confirmação para seu e-mail.");
+        }
       } else {
-        await onSignIn(formEmail, String(form.get("password") ?? ""));
+        await onSignIn(formEmail, String(form.get("password") ?? ""), rememberSession);
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível concluir a solicitação.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendCode(type: "signup" | "recovery" = mode === "verify-signup" ? "signup" : "recovery") {
+    setError("");
+    setMessage("");
+    setBusy(true);
+    try {
+      await onResendEmailCode(email, type);
+      setMessage("Se o e-mail puder receber um código, enviaremos uma nova mensagem.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível reenviar o código.");
     } finally {
       setBusy(false);
     }
@@ -74,7 +129,21 @@ export function AuthPage({
     }
   }
 
-  const title = recovery ? "Crie uma nova senha" : mode === "register" ? "Crie sua conta" : mode === "forgot" ? "Recuperar senha" : "Bem-vinda de volta";
+  const isCodeVerification = mode === "verify-signup" || mode === "verify-recovery" || (recovery && recoveryStep === "code");
+  const title = recovery && recoveryStep === "password" ? "Crie uma nova senha"
+    : mode === "verify-signup" ? "Confirme seu e-mail"
+      : mode === "verify-recovery" || recovery ? "Verifique seu e-mail"
+        : mode === "register" ? "Crie sua conta"
+          : mode === "forgot" ? "Recuperar senha" : "Bem-vinda de volta";
+  const description = recovery && recoveryStep === "password"
+    ? "Escolha uma senha segura para continuar cuidando da sua vida financeira."
+    : isCodeVerification
+      ? `Digite o código de 6 dígitos enviado para ${recovery ? recoveryEmail : email}.`
+      : mode === "register"
+        ? "Crie sua conta e comece a cuidar melhor do seu dinheiro."
+        : mode === "forgot"
+          ? "Enviaremos um código para você criar uma nova senha."
+          : "Faça login na sua conta para continuar cuidando da sua vida financeira.";
   return (
     <main className="login-screen">
       <img className="login-artwork" src="/login-artwork.svg" alt="" aria-hidden="true" />
@@ -95,7 +164,7 @@ export function AuthPage({
         <div className="login-card">
           <div className="login-card-spark">✦</div>
           <h1>{title}</h1>
-          <p>{recovery ? "Escolha uma senha segura para continuar cuidando da sua vida financeira." : mode === "register" ? "Crie sua conta e comece a cuidar melhor do seu dinheiro." : mode === "forgot" ? "Enviaremos um link para você criar uma nova senha." : "Faça login na sua conta para continuar cuidando da sua vida financeira."}</p>
+          <p>{description}</p>
           <span className="login-underline" />
           {!configured && !recovery && (
             <div className="setup-security auth-setup-notice">
@@ -103,10 +172,34 @@ export function AuthPage({
               <span>Preencha a URL e a chave pública do Supabase no arquivo .env e reinicie o app.</span>
             </div>
           )}
-          {message && <div className="auth-success" role="status">{message}</div>}
-          {error && <div className="auth-message" role="alert">{error}</div>}
-          <form className="auth-form" onSubmit={submit}>
-            {recovery ? (
+          {message && <div className="auth-feedback auth-feedback-success" role="status"><CheckCircle2 size={16} /><span>{message}</span></div>}
+          {recovery && recoveryStep === "code" && !message && <div className="auth-feedback auth-feedback-success" role="status"><CheckCircle2 size={16} /><span>Enviamos um código de recuperação para seu e-mail.</span></div>}
+          {error && <div className="auth-feedback auth-feedback-error" role="alert"><AlertCircle size={16} /><span>{error}</span></div>}
+          <form className="auth-form" noValidate onSubmit={submit}>
+            {isCodeVerification ? (
+              <>
+                {recovery ? (
+                  <input type="hidden" name="email" value={recoveryEmail} />
+                ) : (
+                  <label className="auth-input-wrap"><UserRound className="auth-user-icon" size={17} /><input name="email" type="email" placeholder="Seu e-mail" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+                )}
+                <label className="auth-otp-label">
+                  Código de verificação
+                  <input
+                    className="auth-otp-input"
+                    name="otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="000000"
+                    maxLength={8}
+                    pattern="[0-9]{6,8}"
+                    required
+                    aria-label="Código de verificação enviado por e-mail"
+                  />
+                </label>
+              </>
+            ) : recovery && recoveryStep === "password" ? (
               <>
                 <label className="auth-input-wrap"><LockKeyhole size={17} /><input name="password" type={showPassword ? "text" : "password"} placeholder="Nova senha" minLength={8} required autoComplete="new-password" /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></label>
                 <label className="auth-input-wrap"><LockKeyhole size={17} /><input name="password-confirm" type={showPassword ? "text" : "password"} placeholder="Confirme a nova senha" minLength={8} required autoComplete="new-password" /></label>
@@ -117,14 +210,22 @@ export function AuthPage({
                 <label className="auth-input-wrap"><UserRound className="auth-user-icon" size={17} /><input name="email" type="email" placeholder="Seu e-mail" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
                 {mode !== "forgot" && <label className="auth-input-wrap"><LockKeyhole size={17} /><input name="password" type={showPassword ? "text" : "password"} placeholder="Sua senha" minLength={8} required autoComplete={mode === "register" ? "new-password" : "current-password"} /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></label>}
                 {mode === "register" && <label className="auth-input-wrap"><LockKeyhole size={17} /><input name="password-confirm" type={showPassword ? "text" : "password"} placeholder="Confirme sua senha" minLength={8} required autoComplete="new-password" /></label>}
-                {mode === "login" && <div className="auth-inline-links"><label className="remember-me"><input type="checkbox" /> Lembrar de mim</label><button type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Esqueceu sua senha?</button></div>}
+                {mode === "login" && <div className="auth-inline-links"><label className="remember-me"><input type="checkbox" checked={rememberSession} onChange={(event) => setRememberSession(event.target.checked)} /> Lembrar de mim</label><button type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Esqueceu sua senha?</button></div>}
               </>
             )}
             <button className="button-primary auth-submit" type="submit" disabled={busy || (!configured && !recovery)}>
-              {busy ? "Aguarde..." : recovery ? "Salvar nova senha" : mode === "register" ? "Criar conta" : mode === "forgot" ? "Enviar link de recuperação" : <>Entrar <ArrowRight size={17} /></>}
+              {busy ? "Aguarde..." : recovery && recoveryStep === "password" ? "Salvar nova senha" : isCodeVerification ? "Confirmar código" : mode === "register" ? "Criar conta" : mode === "forgot" ? "Enviar código de recuperação" : <>Entrar <ArrowRight size={17} /></>}
             </button>
           </form>
-          {!recovery && mode !== "forgot" && (
+          {isCodeVerification && (
+            <div className="auth-code-actions">
+              <button type="button" onClick={() => void resendCode(recovery ? "recovery" : undefined)} disabled={busy}>Reenviar código</button>
+              {recovery
+                ? <button type="button" onClick={onRecoveryComplete}>Cancelar</button>
+                : <button type="button" onClick={() => { setMode("login"); setError(""); setMessage(""); }}>Voltar ao login</button>}
+            </div>
+          )}
+          {!recovery && !isCodeVerification && mode !== "forgot" && (
             <>
               <div className="auth-divider"><span>ou</span></div>
               <button className="google-signin" disabled={!configured || busy} onClick={() => void googleSignIn()}>
@@ -138,7 +239,7 @@ export function AuthPage({
               </button>
             </>
           )}
-          {!recovery && (
+          {!recovery && !isCodeVerification && (
             <div className="auth-register-prompt">
               {mode === "register" ? "Já tem uma conta?" : mode === "forgot" ? "Lembrou sua senha?" : "Não tem uma conta?"}
               <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); setMessage(""); }}>{mode === "register" || mode === "forgot" ? "Entrar" : "Cadastre-se"}</button>
