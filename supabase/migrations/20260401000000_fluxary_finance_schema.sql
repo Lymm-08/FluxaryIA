@@ -31,6 +31,7 @@ create table if not exists public.transactions (
   transaction_date date not null,
   amount numeric(14, 2) not null check (amount > 0),
   type text not null check (type in ('income', 'expense')),
+  is_settled boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (user_id, id)

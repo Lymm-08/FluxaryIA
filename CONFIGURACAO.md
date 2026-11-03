@@ -14,6 +14,10 @@ O trigger de cadastro cria o perfil e as preferências. As tabelas financeiras t
 
 O script cobre os dados usados pelas páginas atuais: `transactions` (receitas, despesas e compras/pagamentos parcelados), `categories`, `accounts`, `credit_cards`, `custom_banks`, `budgets`, `financial_goals` e `user_settings`, além de `profiles` ligado a `auth.users`. As movimentações e os orçamentos guardam o nome da categoria como histórico e também uma FK opcional `category_id`, anulada com segurança quando a categoria é removida. O controle atual de cartão calcula o valor em aberto a partir de compras e pagamentos; não existe ainda tela de ciclos/faturas individualizados. Subcategorias, recorrências, transferências e favoritos também não existem como operações/telas e não são anunciados como funcionalidades do banco.
 
+Despesas pagas fora do crédito e pagamentos de fatura registram `account_id` em `transactions`. Em um projeto existente já configurado com o SQL consolidado anterior, execute uma vez `supabase/migrations/20261103000000_transactions_account_source.sql` no SQL Editor para adicionar essa coluna, sua chave estrangeira e índice antes de atualizar o app.
+
+Movimentações com data futura usam `transactions.is_settled` para ficarem agendadas sem alterar o saldo atual; ao confirmar pelo sino, o lançamento passa a ser considerado realizado. Em projetos existentes, execute uma vez `supabase/migrations/20261103010000_future_transactions_settlement.sql` no SQL Editor. O SQL consolidado também cria essa coluna e migra lançamentos futuros em uma instalação ou atualização feita por ele.
+
 ## 2. Variáveis locais
 
 1. Copie `.env.example` para `.env` na raiz do projeto.
@@ -31,7 +35,9 @@ No Supabase, abra **Authentication → URL Configuration**:
 - Configure **Site URL** com a URL principal de desenvolvimento ou produção.
 - Para desenvolvimento local, adicione `http://localhost:5173/**` em **Redirect URLs**. Quando publicar sem domínio próprio, use o endereço temporário fornecido pela hospedagem como **Site URL** e adicione esse endereço em **Redirect URLs**. Não é preciso comprar domínio para autenticar ou usar o Supabase.
 - Ative a confirmação de e-mail em **Authentication → Providers → Email** para exigir verificação antes do primeiro login.
-- Revise os templates de confirmação e recuperação em **Authentication → Email Templates**.
+- Em **Authentication → Email Templates**, ajuste os templates **Confirm signup** e **Reset password** para mostrar o código OTP: inclua `{{ .Token }}` no corpo do e-mail, por exemplo, `Seu código Fluxary.ia é: {{ .Token }}`. Não use apenas `{{ .ConfirmationURL }}` ou um link se quiser que a pessoa digite o código no app.
+- A tela do Fluxary valida os códigos com Supabase Auth. No cadastro, o código confirma o e-mail e autentica a conta; na recuperação, o código abre a etapa para escolher e confirmar uma nova senha.
+- Em **Configurações → Conta e segurança**, o botão **Redefinir senha por e-mail** envia o código de recuperação; depois de validá-lo, a tela permite cadastrar a nova senha.
 - Revise e mantenha os limites de autenticação padrão em **Authentication → Rate Limits**. Não há CAPTCHA nem regras customizadas de tentativas implementados pelo frontend.
 - Para envio confiável em produção, configure SMTP próprio na área de **Authentication → SMTP Settings**. O serviço padrão pode ter limites de entrega.
 

@@ -111,6 +111,8 @@ create table if not exists public.transactions (
   transaction_date date not null,
   amount numeric(14, 2) not null check (amount > 0),
   type text not null check (type in ('income', 'expense')),
+  is_settled boolean not null default true,
+  account_id text null,
   credit_card_id text null,
   credit_card_kind text null check (credit_card_kind is null or credit_card_kind in ('purchase', 'payment')),
   installment_group_id text null,
@@ -131,6 +133,13 @@ create table if not exists public.transactions (
     (credit_card_id is null and credit_card_kind is null)
     or (credit_card_id is not null and credit_card_kind is not null)
   ),
+  constraint transactions_account_credit_purchase_check check (
+    credit_card_kind is distinct from 'purchase' or account_id is null
+  ),
+  constraint transactions_account_user_fkey
+    foreign key (user_id, account_id)
+    references public.accounts (user_id, id)
+    on delete restrict,
   constraint transactions_credit_card_user_fkey
     foreign key (user_id, credit_card_id)
     references public.credit_cards (user_id, id)
@@ -141,12 +150,33 @@ create table if not exists public.transactions (
     on delete set null (category_id)
 );
 
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'transactions'
+      and column_name = 'is_settled'
+  ) then
+    execute 'alter table public.transactions add column is_settled boolean not null default true';
+    execute 'update public.transactions set is_settled = false where transaction_date > current_date';
+  end if;
+end;
+$$;
+
 -- 4. Índices para consultas mensais, cartões, parcelas e planejamentos.
 create index if not exists transactions_user_date_idx
   on public.transactions (user_id, transaction_date desc);
+create index if not exists transactions_user_pending_date_idx
+  on public.transactions (user_id, transaction_date)
+  where is_settled = false;
 create index if not exists transactions_user_credit_card_idx
   on public.transactions (user_id, credit_card_id, transaction_date desc)
   where credit_card_id is not null;
+create index if not exists transactions_user_account_idx
+  on public.transactions (user_id, account_id, transaction_date desc)
+  where account_id is not null;
 create index if not exists transactions_installment_group_idx
   on public.transactions (user_id, installment_group_id)
   where installment_group_id is not null;

@@ -9,6 +9,8 @@ export type Transaction = {
   transaction_date: string;
   amount: number;
   type: TransactionType;
+  isSettled?: boolean;
+  accountId?: string;
   creditCardId?: string;
   creditCardKind?: "purchase" | "payment";
   installmentGroupId?: string;
@@ -68,3 +70,12 @@ export type FinancialGoal = {
 };
 
 export type Totals = { income: number; expenses: number; balance: number };
+
+export type FinanceNotification = {
+  id: string;
+  title: string;
+  message: string;
+  tone: "danger" | "warning" | "success" | "neutral";
+  actionLabel?: string;
+  transactionId?: string;
+};

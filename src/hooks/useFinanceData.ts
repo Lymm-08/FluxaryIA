@@ -45,7 +45,14 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       const savedCategories = (categoryRows.data ?? []).map((row): Category => ({
         id: row.id, name: row.name, type: row.type, color: row.color, emoji: row.emoji,
       }));
-      const loadedCategories = savedCategories.length ? savedCategories : DEFAULT_CATEGORIES;
+      const loadedCategories = savedCategories.length
+        ? [
+          ...savedCategories,
+          ...DEFAULT_CATEGORIES.filter((category) =>
+            !savedCategories.some((saved) => saved.type === category.type),
+          ),
+        ]
+        : DEFAULT_CATEGORIES;
       setCategories(loadedCategories);
       setTransactions((transactionRows.data ?? []).map((row): Transaction => ({
         id: row.id, description: row.description, category: row.category,
@@ -53,6 +60,8 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
           ? { categoryId: row.category_id }
           : { categoryId: loadedCategories.find((category) => category.name === row.category && category.type === row.type)?.id }),
         transaction_date: row.transaction_date, amount: Number(row.amount), type: row.type,
+        isSettled: row.is_settled ?? true,
+        ...(row.account_id ? { accountId: row.account_id } : {}),
         ...(row.credit_card_id ? { creditCardId: row.credit_card_id } : {}),
         ...(row.credit_card_kind ? { creditCardKind: row.credit_card_kind } : {}),
         ...(row.installment_group_id ? { installmentGroupId: row.installment_group_id } : {}),
@@ -99,6 +108,23 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     const previous = queues.current[key] ?? Promise.resolve();
     const next = previous.catch(() => undefined).then(operation).catch((reason: unknown) => {
       const detail = reason instanceof Error ? reason.message : "erro desconhecido";
+      if (key === "movimentações" && isMissingSettledColumn(reason)) {
+        onError(
+          "A movimentação não foi salva na nuvem porque falta a coluna is_settled no Supabase. "
+          + "Execute supabase/migrations/20261103010000_future_transactions_settlement.sql no SQL Editor e tente novamente.",
+        );
+        return;
+      }
+      if (
+        key === "movimentações"
+        && isMissingAccountIdColumn(reason)
+      ) {
+        onError(
+          "A movimentação não foi salva na nuvem porque falta a coluna account_id no Supabase. "
+          + "Execute supabase/migrations/20261103000000_transactions_account_source.sql no SQL Editor e tente novamente.",
+        );
+        return;
+      }
       onError(`Não foi possível sincronizar ${key} com a nuvem: ${detail}`);
     });
     queues.current[key] = next;
@@ -117,6 +143,8 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       transaction_date: item.transaction_date,
       amount: item.amount,
       type: item.type,
+      is_settled: item.isSettled ?? true,
+      account_id: item.accountId ?? null,
       credit_card_id: item.creditCardId ?? null,
       credit_card_kind: item.creditCardKind ?? null,
       installment_group_id: item.installmentGroupId ?? null,
@@ -125,6 +153,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     }));
     enqueueSync("movimentações", async () => {
       await queues.current["categorias"];
+      await queues.current["contas"];
       await queues.current["cartões"];
       await syncRows(
         rows,
@@ -249,6 +278,22 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
 function normalizeDashboardWidgets(value: string[] | null | undefined): DashboardWidget[] {
   if (!Array.isArray(value)) return DEFAULT_DASHBOARD_WIDGETS;
   return value.filter((item): item is DashboardWidget => item === "cards" || item === "goals");
+}
+
+function isMissingAccountIdColumn(reason: unknown): boolean {
+  if (!reason || typeof reason !== "object") return false;
+  const error = reason as { code?: unknown; message?: unknown };
+  return (error.code === "PGRST204" || error.code === "42703")
+    && typeof error.message === "string"
+    && error.message.includes("account_id");
+}
+
+function isMissingSettledColumn(reason: unknown): boolean {
+  if (!reason || typeof reason !== "object") return false;
+  const error = reason as { code?: unknown; message?: unknown };
+  return (error.code === "PGRST204" || error.code === "42703")
+    && typeof error.message === "string"
+    && error.message.includes("is_settled");
 }
 
 async function syncRows(

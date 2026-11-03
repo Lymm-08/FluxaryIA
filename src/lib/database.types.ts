@@ -9,8 +9,8 @@ type Table<Row, Insert = Partial<Row>, Update = Partial<Insert>> = {
 type OwnedRow = { id: string; user_id: string; created_at: string; updated_at: string };
 
 export type TransactionRow = OwnedRow & {
-  description: string; category: string; category_id: string | null; transaction_date: string; amount: number; type: "income" | "expense";
-  credit_card_id: string | null; credit_card_kind: "purchase" | "payment" | null;
+  description: string; category: string; category_id: string | null; transaction_date: string; amount: number; type: "income" | "expense"; is_settled: boolean;
+  account_id: string | null; credit_card_id: string | null; credit_card_kind: "purchase" | "payment" | null;
   installment_group_id: string | null; installment_number: number | null; installment_count: number | null;
 };
 export type CategoryRow = OwnedRow & {

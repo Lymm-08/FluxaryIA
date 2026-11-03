@@ -63,6 +63,11 @@ begin
   ) or not exists (
     select 1 from pg_constraint
     where conrelid = 'public.transactions'::regclass
+      and conname = 'transactions_account_user_fkey'
+      and contype = 'f'
+  ) or not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.transactions'::regclass
       and conname = 'transactions_category_user_fkey'
       and contype = 'f'
   ) or not exists (
@@ -71,7 +76,7 @@ begin
       and conname = 'budgets_category_user_fkey'
       and contype = 'f'
   ) then
-    raise exception 'Relação entre compras, planejamentos, cartões e categorias está ausente.';
+    raise exception 'Relação entre compras, contas, planejamentos, cartões e categorias está ausente.';
   end if;
 
   if not exists (
@@ -82,6 +87,18 @@ begin
       and not tgisinternal
   ) then
     raise exception 'Trigger de criação do perfil após cadastro está ausente.';
+  end if;
+
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'transactions'
+      and column_name = 'is_settled'
+      and is_nullable = 'NO'
+      and column_default like '%true%'
+  ) then
+    raise exception 'Coluna transactions.is_settled ausente ou sem padrão seguro.';
   end if;
 end;
 $$;
@@ -109,17 +126,49 @@ begin
 end;
 $$;
 
--- Simula uma requisição autenticada da conta A e insere uma linha temporária.
+-- Prepara uma conta de propriedade do usuário B para validar o isolamento da FK.
+reset role;
+insert into public.accounts (id, user_id, name, institution, bank_id, balance)
+values (
+  '__fluxary_account_b_probe__',
+  current_setting('fluxary_test.user_b')::uuid,
+  'Conta de teste B',
+  'Teste',
+  'test',
+  100.00
+);
 set local role authenticated;
 select set_config('request.jwt.claim.sub', current_setting('fluxary_test.user_a'), true);
 
+insert into public.accounts (id, user_id, name, institution, bank_id, balance)
+values ('__fluxary_account_a_probe__', auth.uid(), 'Conta de teste A', 'Teste', 'test', 100.00);
+
+-- Simula uma requisição autenticada da conta A e insere uma linha temporária.
 insert into public.transactions (
-  id, user_id, description, category, category_id, transaction_date, amount, type
+  id, user_id, description, category, category_id, transaction_date, amount, type, account_id
 )
 values (
   '__fluxary_rls_probe__', auth.uid(), 'Teste RLS temporário',
-  'Teste', null, current_date, 1.00, 'expense'
+  'Teste', null, current_date, 1.00, 'expense', '__fluxary_account_a_probe__'
 );
+
+-- Uma conta não deve poder associar uma movimentação a conta de outro usuário.
+do $$
+begin
+  begin
+    insert into public.transactions (
+      id, user_id, description, category, transaction_date, amount, type, account_id
+    )
+    values (
+      '__fluxary_cross_account_probe__', auth.uid(), 'Teste de conta alheia',
+      'Teste', current_date, 1.00, 'expense', '__fluxary_account_b_probe__'
+    );
+    raise exception 'Falha de isolamento: foi possível associar conta de outro usuário.';
+  exception when foreign_key_violation then
+    null;
+  end;
+end;
+$$;
 
 -- Verifica que a remoção de categoria preserva lançamentos/orçamentos históricos.
 insert into public.categories (id, user_id, name, type, color, emoji)
