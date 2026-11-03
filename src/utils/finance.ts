@@ -18,13 +18,10 @@ export function calculateTotals(transactions: Transaction[], accounts: Account[]
     .filter((item) => item.type === "expense" && item.creditCardKind !== "purchase" && !item.cashBoxKind)
     .reduce((sum, item) => sum + item.amount, 0);
   const accountBalance = accounts.reduce((sum, account) => sum + getAccountBalance(account, transactions), 0);
-  const cashBoxBalance = transactions
-    .filter((item) => item.isSettled !== false && item.cashBoxKind)
-    .reduce((sum, item) => sum + (item.cashBoxKind === "deposit" ? item.amount : -item.amount), 0);
   const unassignedMonthlyNet = monthly
     .filter((item) => !item.accountId && item.creditCardKind !== "purchase" && !item.cashBoxKind)
     .reduce((sum, item) => sum + (item.type === "income" ? item.amount : -item.amount), 0);
-  return { income, expenses, balance: accountBalance + cashBoxBalance + unassignedMonthlyNet };
+  return { income, expenses, balance: accountBalance + unassignedMonthlyNet };
 }
 
 export function calculateProjectedBalance(transactions: Transaction[], accounts: Account[], cards: CreditCardItem[]) {

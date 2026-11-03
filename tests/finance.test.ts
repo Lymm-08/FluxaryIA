@@ -38,7 +38,7 @@ describe("regras financeiras", () => {
     expect(calculateProjectedBalance(transactions, [account], [])).toBe(1230);
   });
 
-  it("registra aporte e retirada como transferências sem alterar receitas, despesas ou patrimônio", () => {
+  it("debita aportes do saldo atual e credita retiradas sem contar como receita ou despesa", () => {
     const deposit = transaction({
       id: "deposit-1",
       description: "Aporte: Viagem",
@@ -62,8 +62,9 @@ describe("regras financeiras", () => {
     expect(getCashBoxBalance("travel", [deposit, withdrawal])).toBe(200);
     expect(getAccountBalance(account, [deposit])).toBe(750);
     expect(getAccountBalance(account, [deposit, withdrawal])).toBe(800);
-    expect(calculateTotals([deposit, withdrawal], [account])).toEqual({ income: 0, expenses: 0, balance: 1000 });
-    expect(calculateProjectedBalance([deposit, withdrawal], [account], [])).toBe(1000);
+    expect(calculateTotals([deposit], [account])).toEqual({ income: 0, expenses: 0, balance: 750 });
+    expect(calculateTotals([deposit, withdrawal], [account])).toEqual({ income: 0, expenses: 0, balance: 800 });
+    expect(calculateProjectedBalance([deposit, withdrawal], [account], [])).toBe(800);
   });
 
   it("calcula limite do cartão considerando compras, pagamentos e agendamentos", () => {
