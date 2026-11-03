@@ -81,6 +81,8 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   const [showTransactionForm, setShowTransactionForm] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [incomeCelebration, setIncomeCelebration] = useState(false);
+  const incomeCelebrationTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [balanceMode, setBalanceMode] = useState<BalanceMode | null>(null);
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -186,8 +188,12 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     && (totals.income === 0 ? totals.expenses === 0 : totals.expenses <= totals.income * 0.7)
     && !budgetExceeded
     && creditUtilization < 0.65);
-  const mascotExpression: MascotExpression = financialAlert ? "alert" : financialHealthGood ? "approval" : "encouragement";
-  const mascotMessage = budgetExceeded
+  const mascotExpression: MascotExpression = incomeCelebration
+    ? "celebration"
+    : financialAlert ? "alert" : financialHealthGood ? "approval" : "encouragement";
+  const mascotMessage = incomeCelebration
+    ? "Receita recebida! Cada conquista merece ser comemorada."
+    : budgetExceeded
     ? `As despesas do mês passaram do limite de ${money.format(monthlyBudget)}.`
     : totals.balance < 0
       ? "Seu saldo está negativo. Vamos rever as despesas e recuperar o equilíbrio."
@@ -200,6 +206,10 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   useEffect(() => {
     document.documentElement.dataset.theme = finance.darkMode ? "dark" : "light";
   }, [finance.darkMode]);
+
+  useEffect(() => () => {
+    if (incomeCelebrationTimeout.current !== null) clearTimeout(incomeCelebrationTimeout.current);
+  }, []);
 
   if (finance.loading) return <div className="screen-state">Carregando seus dados financeiros...</div>;
   if (finance.loadError) return (
@@ -240,6 +250,15 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     setSelectedAccountId(transaction?.accountId ?? finance.accounts[0]?.id ?? "");
     setBalanceMode(null);
     setShowTransactionForm(true);
+  }
+
+  function celebrateIncome() {
+    setIncomeCelebration(true);
+    if (incomeCelebrationTimeout.current !== null) clearTimeout(incomeCelebrationTimeout.current);
+    incomeCelebrationTimeout.current = setTimeout(() => {
+      setIncomeCelebration(false);
+      incomeCelebrationTimeout.current = null;
+    }, 5000);
   }
 
   function openBalanceForm(mode: BalanceMode) {
@@ -446,6 +465,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     setShowTransactionForm(false);
     setTransactionToEdit(null);
     setError("");
+    if (transactionType === "income" && !isScheduled) celebrateIncome();
   }
 
   async function markTransactionSettled(transactionId: string): Promise<boolean> {
@@ -474,6 +494,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       item.id === transactionId ? { ...item, isSettled: true } : item,
     ));
     setError("");
+    if (transaction.type === "income") celebrateIncome();
     return true;
   }
 
