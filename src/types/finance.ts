@@ -69,6 +69,19 @@ export type FinancialGoal = {
   deadline: string;
 };
 
+export type CashBox = {
+  id: string;
+  name: string;
+};
+
+export type CashBoxDeposit = {
+  id: string;
+  cashBoxId: string;
+  accountId: string;
+  amount: number;
+  createdAt: string;
+};
+
 export type Totals = { income: number; expenses: number; balance: number };
 
 export type FinanceNotification = {

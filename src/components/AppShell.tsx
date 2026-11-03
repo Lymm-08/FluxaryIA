@@ -1,5 +1,5 @@
 import {
-  Bell, BellRing, CircleHelp, CreditCard, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen,
+  Bell, BellRing, CircleHelp, CreditCard, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PiggyBank,
   Settings, Sparkles, Tags, Target, TrendingUp, Wallet, X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -12,6 +12,7 @@ const menuItems = [
   { label: "Cartões", icon: CreditCard },
   { label: "Planejamento", icon: TrendingUp },
   { label: "Metas", icon: Target },
+  { label: "Caixinhas", icon: PiggyBank },
   { label: "Chat Fluxary", icon: Sparkles },
 ];
 

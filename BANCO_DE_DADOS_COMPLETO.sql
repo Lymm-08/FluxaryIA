@@ -101,6 +101,36 @@ create table if not exists public.financial_goals (
   primary key (user_id, id)
 );
 
+create table if not exists public.cash_boxes (
+  id text not null,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null check (char_length(btrim(name)) between 1 and 60),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+
+create table if not exists public.cash_box_deposits (
+  id text not null,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  cash_box_id text not null,
+  account_id text not null,
+  amount numeric(14, 2) not null check (amount > 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id),
+  constraint cash_box_deposits_box_user_fkey
+    foreign key (user_id, cash_box_id)
+    references public.cash_boxes (user_id, id)
+    on delete restrict,
+  constraint cash_box_deposits_account_user_fkey
+    foreign key (user_id, account_id)
+    references public.accounts (user_id, id)
+    on delete restrict
+);
+create index if not exists cash_box_deposits_user_box_idx on public.cash_box_deposits (user_id, cash_box_id);
+create index if not exists cash_box_deposits_user_account_idx on public.cash_box_deposits (user_id, account_id);
+
 -- 3. Movimentações comuns, compras no crédito, pagamentos e parcelamentos.
 create table if not exists public.transactions (
   id text not null,
@@ -239,7 +269,7 @@ declare
 begin
   foreach table_name in array array[
     'profiles', 'user_settings', 'transactions', 'categories', 'accounts',
-    'credit_cards', 'custom_banks', 'budgets', 'financial_goals'
+    'credit_cards', 'custom_banks', 'budgets', 'financial_goals', 'cash_boxes', 'cash_box_deposits'
   ] loop
     execute format('drop trigger if exists set_updated_at on public.%I', table_name);
     execute format(
@@ -253,11 +283,11 @@ $$;
 
 revoke all on public.profiles, public.user_settings, public.transactions, public.categories,
   public.accounts, public.credit_cards, public.custom_banks, public.budgets,
-  public.financial_goals from public, anon;
+  public.financial_goals, public.cash_boxes, public.cash_box_deposits from public, anon;
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.profiles, public.user_settings, public.transactions,
   public.categories, public.accounts, public.credit_cards, public.custom_banks, public.budgets,
-  public.financial_goals to authenticated;
+  public.financial_goals, public.cash_boxes, public.cash_box_deposits to authenticated;
 revoke all on function public.create_fluxary_user_records() from public, anon, authenticated;
 revoke all on function public.set_updated_at() from public, anon, authenticated;
 
@@ -275,7 +305,7 @@ declare
 begin
   foreach table_name in array array[
     'transactions', 'categories', 'accounts', 'credit_cards',
-    'custom_banks', 'budgets', 'financial_goals'
+    'custom_banks', 'budgets', 'financial_goals', 'cash_boxes', 'cash_box_deposits'
   ] loop
     execute format('drop policy if exists "Users can manage their own rows" on public.%I', table_name);
     execute format(

@@ -25,6 +25,8 @@ export type CreditCardRow = OwnedRow & {
 export type CustomBankRow = OwnedRow & { name: string; emoji: string; color: string };
 export type BudgetRow = OwnedRow & { category: string; category_id: string | null; monthly_limit: number };
 export type GoalRow = OwnedRow & { name: string; target: number; saved: number; deadline: string | null };
+export type CashBoxRow = OwnedRow & { name: string };
+export type CashBoxDepositRow = OwnedRow & { cash_box_id: string; account_id: string; amount: number };
 export type ProfileRow = { id: string; email: string; display_name: string; created_at: string; updated_at: string };
 export type UserSettingsRow = { user_id: string; monthly_budget: number | null; dark_mode: boolean; dashboard_widgets: string[]; created_at: string; updated_at: string };
 
@@ -40,6 +42,8 @@ export type Database = {
       custom_banks: Table<CustomBankRow, Omit<CustomBankRow, "created_at" | "updated_at">>;
       budgets: Table<BudgetRow, Omit<BudgetRow, "created_at" | "updated_at">>;
       financial_goals: Table<GoalRow, Omit<GoalRow, "created_at" | "updated_at">>;
+      cash_boxes: Table<CashBoxRow, Omit<CashBoxRow, "created_at" | "updated_at">>;
+      cash_box_deposits: Table<CashBoxDepositRow, Omit<CashBoxDepositRow, "created_at" | "updated_at">>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

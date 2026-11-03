@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Account, CreditCardItem, Transaction } from "../src/types/finance";
-import { calculateProjectedBalance, calculateTotals, getCardBillingNotice, getCardUsage } from "../src/utils/finance";
+import type { Account, CashBoxDeposit, CreditCardItem, Transaction } from "../src/types/finance";
+import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage, getCashBoxBalance } from "../src/utils/finance";
 import { localDateString, parseAmount } from "../src/utils/format";
 
 const today = localDateString(new Date());
@@ -36,6 +36,20 @@ describe("regras financeiras", () => {
 
     expect(calculateTotals(transactions, [account])).toEqual({ income: 500, expenses: 200, balance: 1300 });
     expect(calculateProjectedBalance(transactions, [account], [])).toBe(1230);
+  });
+
+  it("debit a conta para uma caixinha sem classificar o aporte como despesa", () => {
+    const deposits: CashBoxDeposit[] = [{
+      id: "deposit-1",
+      cashBoxId: "travel",
+      accountId: account.id,
+      amount: 250,
+      createdAt: "2026-11-03T12:00:00.000Z",
+    }];
+
+    expect(getCashBoxBalance("travel", deposits)).toBe(250);
+    expect(getAccountBalance(account, [], deposits)).toBe(750);
+    expect(calculateTotals([], [account], deposits)).toEqual({ income: 0, expenses: 0, balance: 750 });
   });
 
   it("calcula limite do cartão considerando compras, pagamentos e agendamentos", () => {

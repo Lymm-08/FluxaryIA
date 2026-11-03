@@ -182,6 +182,10 @@
   border-color: #2b3b33;
 }
 
+[data-theme="dark"] .cash-box-form-copy {
+  color: #9aa9a0;
+}
+
 [data-theme="dark"] .transaction-description span, [data-theme="dark"] .empty-state, [data-theme="dark"] .category-empty p {
   color: #9aa9a0;
 }

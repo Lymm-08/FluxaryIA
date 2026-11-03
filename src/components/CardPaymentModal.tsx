@@ -1,18 +1,19 @@
 import { CreditCard, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
-import type { Account, CreditCardItem, CustomBank, Transaction } from "../types/finance";
+import type { Account, CashBoxDeposit, CreditCardItem, CustomBank, Transaction } from "../types/finance";
 import { money } from "../utils/format";
 import { getAccountBalance } from "../utils/finance";
 import { BankLogo } from "./BankLogo";
 import { StyledSelect } from "./StyledSelect";
 
-export function CardPaymentModal({ card, used, customBanks, accounts, transactions, selectedAccountId, onAccountChange, onClose, onSubmit }: {
+export function CardPaymentModal({ card, used, customBanks, accounts, transactions, cashBoxDeposits, selectedAccountId, onAccountChange, onClose, onSubmit }: {
   card: CreditCardItem;
   used: number;
   customBanks: CustomBank[];
   accounts: Account[];
   transactions: Transaction[];
+  cashBoxDeposits: CashBoxDeposit[];
   selectedAccountId: string;
   onAccountChange: (id: string) => void;
   onClose: () => void;
@@ -69,7 +70,7 @@ export function CardPaymentModal({ card, used, customBanks, accounts, transactio
               required
               options={accounts.map((account) => ({
                 value: account.id,
-                label: `${account.name} · ${money.format(getAccountBalance(account, transactions))}`,
+                label: `${account.name} · ${money.format(getAccountBalance(account, transactions, cashBoxDeposits))}`,
               }))}
               onChange={(id) => {
                 setValidationError("");

@@ -13,7 +13,7 @@ import { AuthPage } from "./auth/AuthPage";
 import { useAuth } from "./auth/AuthProvider";
 import { SettingsPage } from "./pages/SettingsPage";
 import type {
-  Account, BudgetPlan, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
+  Account, BudgetPlan, CashBox, CashBoxDeposit, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
 } from "./types/finance";
 import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage } from "./utils/finance";
 import { localDateString, parseAmount } from "./utils/format";
@@ -130,13 +130,17 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   }, []);
 
   const totals = useMemo(
-    () => calculateTotals(finance.transactions, finance.accounts),
-    [finance.accounts, finance.transactions],
+    () => calculateTotals(finance.transactions, finance.accounts, finance.cashBoxDeposits),
+    [finance.accounts, finance.cashBoxDeposits, finance.transactions],
   );
   const projectedBalance = useMemo(
-    () => calculateProjectedBalance(finance.transactions, finance.accounts, finance.cards),
-    [finance.accounts, finance.cards, finance.transactions],
+    () => calculateProjectedBalance(finance.transactions, finance.accounts, finance.cards, finance.cashBoxDeposits),
+    [finance.accounts, finance.cards, finance.cashBoxDeposits, finance.transactions],
   );
+  const accountBalances = Object.fromEntries(finance.accounts.map((account) => [
+    account.id,
+    getAccountBalance(account, finance.transactions, finance.cashBoxDeposits),
+  ]));
   const today = localDateString(new Date());
   const monthlyBudget = finance.monthlyBudget;
   const budgetExceeded = monthlyBudget !== null && totals.expenses > monthlyBudget;
@@ -387,7 +391,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       return;
     }
     if (transactionType === "expense" && !isScheduled && !usesCard && account) {
-      const currentBalance = getAccountBalance(account, finance.transactions);
+      const currentBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
       const previousAccountEffect = transactionToEdit?.accountId === account.id
         && transactionToEdit.creditCardKind !== "purchase"
         ? transactionToEdit.type === "income" ? -transactionToEdit.amount : transactionToEdit.amount
@@ -482,7 +486,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       ? finance.accounts.find((item) => item.id === transaction.accountId)
       : undefined;
     if (transaction.type === "expense" && account) {
-      const accountBalance = getAccountBalance(account, finance.transactions);
+      const accountBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
       if (transaction.amount > accountBalance && !await askConfirmation({
         title: "A conta ficará negativa",
         message: `O lançamento de ${money.format(transaction.amount)} é maior que o saldo atual da conta (${money.format(accountBalance)}). Se confirmar, o saldo ficará negativo.`,
@@ -520,7 +524,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       setError("Selecione a conta usada para pagar a fatura.");
       return;
     }
-    const accountBalance = getAccountBalance(account, finance.transactions);
+    const accountBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
     if (amount > accountBalance && !await askConfirmation({
       title: "A conta ficará negativa",
       message: `O pagamento de ${money.format(amount)} é maior que o saldo atual da conta (${money.format(accountBalance)}). Se continuar, o saldo ficará negativo.`,
@@ -732,10 +736,56 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     setError("");
   }
 
+  function createCashBox(name: string) {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      setError("Dê um nome para a caixinha.");
+      return false;
+    }
+    if (finance.cashBoxes.some((cashBox) => cashBox.name.localeCompare(normalizedName, "pt-BR", { sensitivity: "base" }) === 0)) {
+      setError("Já existe uma caixinha com esse nome.");
+      return false;
+    }
+    finance.setCashBoxes((current) => [...current, { id: crypto.randomUUID(), name: normalizedName }]);
+    setError("");
+    return true;
+  }
+
+  function depositIntoCashBox(cashBox: CashBox, accountId: string, amount: number) {
+    const account = finance.accounts.find((item) => item.id === accountId);
+    if (!finance.cashBoxes.some((item) => item.id === cashBox.id) || !account) {
+      setError("Selecione uma caixinha e uma conta válidas para o aporte.");
+      return false;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Informe um valor válido para guardar.");
+      return false;
+    }
+    const availableBalance = getAccountBalance(account, finance.transactions, finance.cashBoxDeposits);
+    if (amount > availableBalance) {
+      setError(`O aporte não pode ser maior que o saldo disponível na conta (${money.format(availableBalance)}).`);
+      return false;
+    }
+    const deposit: CashBoxDeposit = {
+      id: crypto.randomUUID(),
+      cashBoxId: cashBox.id,
+      accountId: account.id,
+      amount,
+      createdAt: new Date().toISOString(),
+    };
+    finance.setCashBoxDeposits((current) => [...current, deposit]);
+    setError("");
+    return true;
+  }
+
   async function removeEntry(type: FinanceEntryType, item: FinanceEntry) {
     if (!item) return;
     if (type === "account" && finance.transactions.some((transaction) => transaction.accountId === item.id)) {
       setError("Esta conta tem movimentações vinculadas. Mantenha-a para preservar o histórico financeiro.");
+      return;
+    }
+    if (type === "account" && finance.cashBoxDeposits.some((deposit) => deposit.accountId === item.id)) {
+      setError("Esta conta tem aportes vinculados a caixinhas. Mantenha-a para preservar o histórico.");
       return;
     }
     if (type === "card" && finance.transactions.some((transaction) => transaction.creditCardId === item.id)) {
@@ -807,6 +857,8 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
         <SectionRouter
           page={page} transactions={finance.transactions} categories={finance.categories} accounts={finance.accounts}
           cards={finance.cards} customBanks={finance.customBanks} plans={finance.plans} goals={finance.goals}
+          cashBoxes={finance.cashBoxes} cashBoxDeposits={finance.cashBoxDeposits} accountBalances={accountBalances}
+          cashBoxSchemaReady={finance.cashBoxSchemaReady}
           handlers={{
             addTransaction: () => openTransactionForm(),
             addCategory: openCategoryForm,
@@ -825,12 +877,15 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
             addGoal: () => openFinanceEntry("goal"),
             editGoal: (entry) => openFinanceEntry("goal", entry),
             deleteGoal: (entry) => removeEntry("goal", entry),
+            addCashBox: createCashBox,
+            depositCashBox: depositIntoCashBox,
           }}
         />
       )}
       {showTransactionForm && (
         <TransactionModal
           categories={finance.categories} accounts={finance.accounts} cards={finance.cards} transactions={finance.transactions}
+          cashBoxDeposits={finance.cashBoxDeposits}
           transaction={transactionToEdit}
           selectedAccountId={selectedAccountId} selectedCardId={selectedCreditCardId} type={transactionType} categoryId={selectedCategoryId}
           onTypeChange={(type) => {
@@ -876,6 +931,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
           accounts={finance.accounts}
           selectedAccountId={selectedAccountId}
           transactions={finance.transactions}
+          cashBoxDeposits={finance.cashBoxDeposits}
           customBanks={finance.customBanks}
           onAccountChange={setSelectedAccountId}
           onClose={() => setCardPaymentTarget(null)}
