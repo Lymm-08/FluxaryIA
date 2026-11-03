@@ -21,7 +21,6 @@ export function PlanningPage({ plans, transactions, categories, onAdd, onEdit, o
         && !transaction.cashBoxKind
         && transaction.isSettled !== false
         && transaction.creditCardKind !== "payment"
-        && transaction.creditCardKind !== "purchase"
         && transaction.category === plan.category
         && transaction.transaction_date.startsWith(month))
       .reduce((sum, item) => sum + item.amount, 0),
