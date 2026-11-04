@@ -1,5 +1,7 @@
 
--- 1. Criar tabela de caixinhas
+-- Migração: criação de caixinhas e movimentações de poupança.
+-- Seção: cadastros usados para separar valores em objetivos.
+-- Tabela: Caixinhas financeiras do usuário (cash_boxes).
 create table if not exists public.cash_boxes (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -9,7 +11,7 @@ create table if not exists public.cash_boxes (
   primary key (user_id, id)
 );
 
--- 2. Criar tabela de depósitos nas caixinhas
+-- Tabela: Aportes e retiradas vinculados à caixinha e à conta (cash_box_deposits).
 create table if not exists public.cash_box_deposits (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -31,14 +33,14 @@ create table if not exists public.cash_box_deposits (
     on delete restrict
 );
 
--- 3. Criar índices
+-- Seção: índices para localizar caixinhas e contas relacionadas.
 create index if not exists cash_box_deposits_user_box_idx
   on public.cash_box_deposits (user_id, cash_box_id);
 
 create index if not exists cash_box_deposits_user_account_idx
   on public.cash_box_deposits (user_id, account_id);
 
--- 4. Configurar permissões
+-- Seção: permissões de acesso para usuários autenticados.
 revoke all on public.cash_boxes, public.cash_box_deposits
 from public, anon;
 
@@ -46,7 +48,7 @@ grant select, insert, update, delete
 on public.cash_boxes, public.cash_box_deposits
 to authenticated;
 
--- 5. Criar triggers somente se ainda não existirem
+-- Seção: gatilhos de data de alteração.
 -- Requer que public.set_updated_at() já exista.
 
 do $$
@@ -83,11 +85,11 @@ begin
 end;
 $$;
 
--- 6. Habilitar RLS
+-- Seção: habilita a segurança em nível de linha para as duas tabelas.
 alter table public.cash_boxes enable row level security;
 alter table public.cash_box_deposits enable row level security;
 
--- 7. Criar políticas somente se ainda não existirem
+-- Seção: limita as operações às linhas pertencentes à conta autenticada.
 do $$
 begin
   if not exists (

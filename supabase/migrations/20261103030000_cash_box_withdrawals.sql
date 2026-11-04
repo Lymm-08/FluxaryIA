@@ -1,3 +1,5 @@
+-- Migração: suporte a retiradas e consolidação do histórico das caixinhas.
+-- Seção: distingue aportes e retiradas no histórico de depósitos (cash_box_deposits).
 alter table public.cash_box_deposits
   add column if not exists direction text not null default 'deposit';
 
@@ -6,11 +8,12 @@ alter table public.cash_box_deposits
   add constraint cash_box_deposits_direction_check
     check (direction in ('deposit', 'withdrawal'));
 
--- Registra aportes e retiradas no ledger comum de movimentações.
+-- Seção: identifica movimentações de caixinha nos lançamentos financeiros (transactions).
 alter table public.transactions
   add column if not exists cash_box_id text null,
   add column if not exists cash_box_kind text null;
 
+-- Seção: adiciona restrições de integridade entre caixinhas, contas e lançamentos.
 do $$
 begin
   if not exists (
@@ -51,11 +54,12 @@ begin
 end;
 $$;
 
+-- Índice: acelera a consulta de movimentações relacionadas a caixinhas.
 create index if not exists transactions_user_cash_box_idx
   on public.transactions (user_id, cash_box_id, transaction_date desc)
   where cash_box_id is not null;
 
--- Converte transferências existentes sem recriá-las se a migration for reaplicada.
+-- Seção: migra o histórico antigo para lançamentos sem duplicar registros existentes.
 insert into public.transactions (
   id,
   user_id,
@@ -102,6 +106,7 @@ join public.cash_boxes as cash_box
   and cash_box.id = deposit.cash_box_id
 on conflict (user_id, id) do nothing;
 
+-- Remove os registros antigos somente após confirmar a migração equivalente.
 delete from public.cash_box_deposits as deposit
 where exists (
   select 1

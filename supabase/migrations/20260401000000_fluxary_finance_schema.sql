@@ -1,4 +1,6 @@
--- Perfil básico associado à conta Auth do Supabase.
+-- Migração: estrutura financeira principal do Fluxary.
+-- Seção: perfis e preferências da conta.
+-- Tabela: Perfis dos usuários (profiles).
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null default '',
@@ -7,7 +9,7 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
--- Preferências sincronizadas entre dispositivos.
+-- Tabela: Preferências pessoais e da tela inicial (user_settings).
 create table if not exists public.user_settings (
   user_id uuid primary key references auth.users (id) on delete cascade,
   monthly_budget numeric(14, 2) null check (monthly_budget is null or monthly_budget > 0),
@@ -21,6 +23,8 @@ create table if not exists public.user_settings (
   updated_at timestamptz not null default now()
 );
 
+-- Seção: movimentações, categorias, contas e cartões.
+-- Tabela: Lançamentos financeiros do usuário (transactions).
 -- IDs em texto preservam também as categorias iniciais já usadas pelo app.
 create table if not exists public.transactions (
   id text not null,
@@ -37,6 +41,7 @@ create table if not exists public.transactions (
   primary key (user_id, id)
 );
 
+-- Tabela: Categorias de receitas e despesas (categories).
 create table if not exists public.categories (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -50,6 +55,7 @@ create table if not exists public.categories (
   unique (user_id, type, name)
 );
 
+-- Tabela: Contas financeiras do usuário (accounts).
 create table if not exists public.accounts (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -62,6 +68,7 @@ create table if not exists public.accounts (
   primary key (user_id, id)
 );
 
+-- Tabela: Cartões de crédito cadastrados (credit_cards).
 create table if not exists public.credit_cards (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -77,6 +84,7 @@ create table if not exists public.credit_cards (
   primary key (user_id, id)
 );
 
+-- Seção: metadados de compras no cartão e parcelamentos.
 alter table public.transactions
   add column if not exists credit_card_id text null,
   add column if not exists credit_card_kind text null,
@@ -123,6 +131,8 @@ create index if not exists transactions_installment_group_idx
   on public.transactions (user_id, installment_group_id)
   where installment_group_id is not null;
 
+-- Seção: bancos personalizados, orçamentos e metas.
+-- Tabela: Instituições financeiras personalizadas (custom_banks).
 create table if not exists public.custom_banks (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -135,6 +145,7 @@ create table if not exists public.custom_banks (
   unique (user_id, name)
 );
 
+-- Tabela: Limites mensais por categoria (budgets).
 create table if not exists public.budgets (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -151,6 +162,7 @@ create table if not exists public.budgets (
     on delete set null (category_id)
 );
 
+-- Tabela: Metas financeiras e valores acumulados (financial_goals).
 create table if not exists public.financial_goals (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -163,6 +175,7 @@ create table if not exists public.financial_goals (
   primary key (user_id, id)
 );
 
+-- Seção: índices, permissões e automações de manutenção.
 create index if not exists transactions_user_date_idx on public.transactions (user_id, transaction_date desc);
 create index if not exists categories_user_type_idx on public.categories (user_id, type);
 create index if not exists budgets_user_category_idx on public.budgets (user_id, category);
@@ -174,6 +187,7 @@ grant select, insert, update, delete on public.profiles, public.user_settings, p
   public.categories, public.accounts, public.credit_cards, public.custom_banks, public.budgets,
   public.financial_goals to authenticated;
 
+-- Função: atualiza automaticamente a data de alteração dos registros.
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -184,6 +198,7 @@ begin
 end;
 $$;
 
+-- Função: cria o perfil e as preferências após o cadastro de uma conta.
 create or replace function public.create_fluxary_user_records()
 returns trigger
 language plpgsql
@@ -212,6 +227,7 @@ create trigger auth_user_created_fluxary_records
   after insert on auth.users
   for each row execute function public.create_fluxary_user_records();
 
+-- Seção: gatilhos, proteção RLS e políticas por proprietário.
 do $$
 declare
   table_name text;

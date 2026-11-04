@@ -1,5 +1,6 @@
-import { Bot, LoaderCircle, MessageSquare, Plus, Send, Sparkles, Trash2, UserRound } from "lucide-react";
+import { LoaderCircle, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { ChatMessage as ChatMessageView, MascotAvatar } from "../components/ChatMessage";
 import {
   createChatConversation,
   deleteChatConversation,
@@ -10,6 +11,7 @@ import {
   type ChatMessage,
 } from "../services/chat";
 
+// Atalhos preenchem o mesmo campo e preservam o fluxo normal de envio.
 const suggestedQuestions = [
   "Como estão meus gastos neste mês?",
   "Compare minhas receitas e despesas recentes.",
@@ -28,6 +30,7 @@ export function ChatPage({ userId }: { userId: string }) {
   const historyRequestId = useRef(0);
   const sendingRef = useRef(false);
 
+  // Histórico persistido e isolado pelo Supabase para a conta autenticada.
   const refreshConversations = useCallback(async () => {
     const saved = await listChatConversations();
     setConversations(saved);
@@ -50,9 +53,11 @@ export function ChatPage({ userId }: { userId: string }) {
   }, [userId]);
 
   useEffect(() => {
-    messagesRef.current?.scrollTo({ top: messagesRef.current.scrollHeight, behavior: "smooth" });
+    const messagesElement = messagesRef.current;
+    if (messagesElement) messagesElement.scrollTop = messagesElement.scrollHeight;
   }, [messages, sending]);
 
+  // Ações do histórico e do composer.
   async function openConversation(id: string) {
     if (sending || id === conversationId) return;
     const requestId = ++historyRequestId.current;
@@ -155,38 +160,28 @@ export function ChatPage({ userId }: { userId: string }) {
 
   return (
     <section className="chat-page">
-      <header className="chat-page-heading">
-        <div>
-          <span className="eyebrow">ASSISTENTE FINANCEIRO</span>
-          <h1>Chat Fluxary</h1>
-          <p>Converse sobre seu dinheiro com contexto dos seus dados financeiros.</p>
-        </div>
-        <span className="chat-heading-icon"><Sparkles size={18} /></span>
-      </header>
-
       <div className="chat-layout">
         <aside className="panel chat-history">
           <div className="chat-history-heading">
-            <h2>Conversas</h2>
-            <button className="button-primary chat-new-button" type="button" onClick={startNewConversation} disabled={sending}>
-              <Plus size={15} /> Nova
-            </button>
+            <div><span className="eyebrow">SEU ESPAÇO</span><h2>Conversas</h2></div>
+            <span className="chat-history-count">{conversations.length}</span>
           </div>
           {loadingHistory ? (
-            <p className="chat-history-state">Carregando conversas...</p>
+            <p className="chat-history-state" role="status">Carregando conversas...</p>
           ) : conversations.length ? (
             <ul className="chat-conversation-list">
               {conversations.map((conversation) => (
                 <li key={conversation.id}>
-                  <button
-                    className={`chat-conversation ${conversationId === conversation.id ? "chat-conversation-active" : ""}`}
-                    type="button"
-                    onClick={() => void openConversation(conversation.id)}
-                    disabled={sending}
-                  >
-                    <MessageSquare size={15} />
-                    <span>{conversation.title}</span>
-                  </button>
+                  <div className={`chat-conversation-row ${conversationId === conversation.id ? "chat-conversation-active" : ""}`}>
+                    <button
+                      className="chat-conversation"
+                      type="button"
+                      onClick={() => void openConversation(conversation.id)}
+                      disabled={sending}
+                    >
+                      <MessageSquare size={15} />
+                      <span>{conversation.title}</span>
+                    </button>
                   <button
                     aria-label={`Excluir conversa ${conversation.title}`}
                     className="chat-delete-button"
@@ -196,42 +191,53 @@ export function ChatPage({ userId }: { userId: string }) {
                   >
                     <Trash2 size={14} />
                   </button>
+                  </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="chat-history-state">Suas conversas aparecerão aqui.</p>
+            <div className="chat-history-state"><MessageSquare size={17} /><span>Suas conversas aparecerão aqui.</span></div>
           )}
         </aside>
 
         <section className="panel chat-window" aria-label="Conversa com o assistente financeiro">
+          <header className="chat-conversation-header">
+            <div className="chat-assistant-profile">
+              <MascotAvatar />
+              <div className="chat-assistant-details">
+                <h1>Assistente Fluxary</h1>
+                <span><i aria-hidden="true" /> Disponível para conversar</span>
+              </div>
+            </div>
+            <button className="chat-new-button" type="button" onClick={startNewConversation} disabled={sending}>
+              <Plus size={16} /><span>Nova conversa</span>
+            </button>
+          </header>
+
           <div className="chat-messages" ref={messagesRef} role="log" aria-live="polite">
             {messages.length === 0 && !sending ? (
               <div className="chat-welcome">
-                <span className="chat-welcome-icon"><Bot size={22} /></span>
-                <h2>Como posso ajudar com suas finanças?</h2>
-                <p>Posso analisar suas movimentações, comparar períodos e ajudar com metas e orçamento.</p>
+                <MascotAvatar welcome />
+                <span className="chat-welcome-kicker">SEU ASSISTENTE FINANCEIRO PESSOAL</span>
+                <h2>Olá! Como posso ajudar com suas finanças hoje?</h2>
+                <p>Estou aqui para ajudar você a entender seus gastos, planejar metas e tomar decisões com mais confiança.</p>
                 <div className="chat-suggestions">
                   {suggestedQuestions.map((question) => (
-                    <button key={question} type="button" onClick={() => setDraft(question)}>{question}</button>
+                    <button key={question} type="button" onClick={() => setDraft(question)}>
+                      <span>{question}</span><span aria-hidden="true">↗</span>
+                    </button>
                   ))}
                 </div>
               </div>
             ) : (
-              messages.map((message) => (
-                <article className={`chat-message chat-message-${message.role}`} key={message.id}>
-                  <span className="chat-message-avatar" aria-hidden="true">
-                    {message.role === "assistant" ? <Bot size={15} /> : <UserRound size={15} />}
-                  </span>
-                  <div className="chat-message-content">
-                    <strong>{message.role === "assistant" ? "Fluxary" : "Você"}</strong>
-                    <p>{message.content}</p>
-                  </div>
-                </article>
-              ))
+              messages.map((message) => <ChatMessageView key={message.id} message={message} />)
             )}
             {sending && (
-              <div className="chat-thinking" role="status"><LoaderCircle size={16} className="chat-spinner" /> Analisando sua pergunta...</div>
+              <div className="chat-thinking" role="status">
+                <MascotAvatar />
+                <div className="chat-thinking-bubble"><span /><span /><span /></div>
+                <span className="visually-hidden">Assistente Fluxary está escrevendo</span>
+              </div>
             )}
           </div>
 
@@ -240,6 +246,7 @@ export function ChatPage({ userId }: { userId: string }) {
             <label className="visually-hidden" htmlFor="chat-message">Digite sua pergunta</label>
             <textarea
               id="chat-message"
+              aria-describedby="chat-composer-hint"
               maxLength={2_000}
               placeholder="Pergunte sobre suas finanças..."
               value={draft}
@@ -249,7 +256,7 @@ export function ChatPage({ userId }: { userId: string }) {
               rows={2}
             />
             <div className="chat-composer-footer">
-              <span>Enter para enviar · Shift + Enter para nova linha</span>
+              <span id="chat-composer-hint">Enter para enviar · Shift + Enter para nova linha</span>
               <button className="button-primary chat-send-button" type="submit" disabled={sending || !draft.trim()} aria-label="Enviar mensagem">
                 {sending ? <LoaderCircle size={16} className="chat-spinner" /> : <Send size={15} />}
                 <span>Enviar</span>
@@ -257,7 +264,7 @@ export function ChatPage({ userId }: { userId: string }) {
             </div>
           </form>
           <p className="chat-privacy-note">
-            Suas movimentações são consultadas com sua sessão e políticas RLS; um resumo é enviado à OpenAI para gerar a resposta.
+            Seus dados são consultados com segurança e usados somente para contextualizar a resposta.
           </p>
         </section>
       </div>

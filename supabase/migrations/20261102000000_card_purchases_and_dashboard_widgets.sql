@@ -1,4 +1,5 @@
--- Registra compras parceladas e ajustes das preferencias de tela inicial.
+-- Migração: compras no cartão, parcelamentos e widgets da tela inicial.
+-- Seção: adiciona preferências dos widgets ao cadastro da conta (user_settings).
 alter table public.user_settings
   add column if not exists dashboard_widgets jsonb not null
   default '["cards", "goals"]'::jsonb;
@@ -13,6 +14,7 @@ alter table public.user_settings
     and dashboard_widgets <@ '["cards", "goals"]'::jsonb
   );
 
+-- Seção: adiciona metadados de compras e pagamentos com cartão (transactions).
 alter table public.transactions
   add column if not exists credit_card_id text null,
   add column if not exists category_id text null,
@@ -52,6 +54,7 @@ alter table public.transactions
     references public.categories (user_id, id)
     on delete set null (category_id);
 
+-- Seção: relaciona limites mensais com suas categorias (budgets).
 alter table public.budgets
   add column if not exists category_id text null,
   drop constraint if exists budgets_category_user_fkey,
@@ -60,6 +63,7 @@ alter table public.budgets
     references public.categories (user_id, id)
     on delete set null (category_id);
 
+-- Seção: índices para consultas de cartão, parcelas e categorias.
 create index if not exists transactions_user_credit_card_idx
   on public.transactions (user_id, credit_card_id, transaction_date desc)
   where credit_card_id is not null;

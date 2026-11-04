@@ -408,5 +408,5 @@ class handler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:
         _json_response(self, 405, {"error": "Método não permitido."})
 
-    def log_message(self, format: str, *args: Any) -> None:
-        return
+    def log_message(self, _format: str, *_args: Any) -> None:
+        super().log_message(_format, *_args)

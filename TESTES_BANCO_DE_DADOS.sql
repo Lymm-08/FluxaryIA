@@ -1,4 +1,5 @@
--- Verificações do esquema e teste transacional de isolamento RLS.
+-- Roteiro de testes: validação do banco de dados do Fluxary.
+-- Seção: verifica as tabelas financeiras, as permissões e o isolamento RLS.
 -- Execute como postgres no Supabase SQL Editor depois de criar duas contas Auth.
 -- Todo dado de teste fica dentro da transação e é desfeito no ROLLBACK final.
 
@@ -7,6 +8,8 @@ begin;
 -- Confirma que as tabelas esperadas existem e têm RLS habilitada.
 do $$
 declare
+  -- Nomes em português: perfis, preferências, lançamentos, categorias, contas,
+  -- cartões, bancos personalizados, orçamentos e metas financeiras.
   expected_tables text[] := array[
     'profiles', 'user_settings', 'transactions', 'categories', 'accounts',
     'credit_cards', 'custom_banks', 'budgets', 'financial_goals'
@@ -103,7 +106,7 @@ begin
 end;
 $$;
 
--- Seleciona duas contas reais já criadas no Supabase Auth sem expor seus dados.
+-- Seção: seleciona duas contas de teste sem exibir seus dados pessoais.
 do $$
 declare
   test_users uuid[];
@@ -126,7 +129,7 @@ begin
 end;
 $$;
 
--- Prepara uma conta de propriedade do usuário B para validar o isolamento da FK.
+-- Seção: prepara contas de teste para validar o isolamento das chaves estrangeiras.
 reset role;
 insert into public.accounts (id, user_id, name, institution, bank_id, balance)
 values (
@@ -143,7 +146,7 @@ select set_config('request.jwt.claim.sub', current_setting('fluxary_test.user_a'
 insert into public.accounts (id, user_id, name, institution, bank_id, balance)
 values ('__fluxary_account_a_probe__', auth.uid(), 'Conta de teste A', 'Teste', 'test', 100.00);
 
--- Simula uma requisição autenticada da conta A e insere uma linha temporária.
+-- Seção: simula operações financeiras autenticadas da conta A.
 insert into public.transactions (
   id, user_id, description, category, category_id, transaction_date, amount, type, account_id
 )
@@ -152,7 +155,7 @@ values (
   'Teste', null, current_date, 1.00, 'expense', '__fluxary_account_a_probe__'
 );
 
--- Uma conta não deve poder associar uma movimentação a conta de outro usuário.
+-- Verifica que uma movimentação não pode usar a conta financeira de outra pessoa.
 do $$
 begin
   begin
@@ -170,7 +173,7 @@ begin
 end;
 $$;
 
--- Verifica que a remoção de categoria preserva lançamentos/orçamentos históricos.
+-- Verifica que a exclusão de categoria preserva o histórico de lançamentos e orçamentos.
 insert into public.categories (id, user_id, name, type, color, emoji)
 values ('__fluxary_category_probe__', auth.uid(), 'Categoria de teste', 'expense', '#123456', 'test');
 insert into public.transactions (
@@ -219,7 +222,7 @@ begin
 end;
 $$;
 
--- A conta B não deve ver, alterar nem excluir a linha da conta A.
+-- Seção: confirma que a conta B não pode consultar, alterar ou excluir dados da conta A.
 select set_config('request.jwt.claim.sub', current_setting('fluxary_test.user_b'), true);
 
 do $$
@@ -250,7 +253,7 @@ begin
 end;
 $$;
 
--- Confirma que a tentativa de alteração da conta B não mudou o registro da conta A.
+-- Confirma que as tentativas da conta B não alteraram o lançamento da conta A.
 select set_config('request.jwt.claim.sub', current_setting('fluxary_test.user_a'), true);
 do $$
 declare
@@ -268,4 +271,4 @@ $$;
 reset role;
 rollback;
 
--- Se chegou até aqui sem exceção, estrutura e isolamento básico passaram.
+-- Resultado: se chegou até aqui sem exceção, estrutura e isolamento básico passaram.

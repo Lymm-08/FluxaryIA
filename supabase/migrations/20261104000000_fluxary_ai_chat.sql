@@ -1,3 +1,6 @@
+-- Migração: histórico e limites de uso do assistente financeiro Fluxary.
+-- Seção: conversas, mensagens e contagem de solicitações por usuário.
+-- Tabela: Conversas do assistente financeiro (ai_conversations).
 create table if not exists public.ai_conversations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -7,6 +10,7 @@ create table if not exists public.ai_conversations (
   unique (id, user_id)
 );
 
+-- Tabela: Mensagens associadas às conversas do mesmo usuário (ai_messages).
 create table if not exists public.ai_messages (
   id uuid primary key default gen_random_uuid(),
   conversation_id uuid not null,
@@ -20,11 +24,13 @@ create table if not exists public.ai_messages (
     on delete cascade
 );
 
+-- Seção: índices e proteção RLS do histórico do assistente.
 create index if not exists ai_conversations_user_updated_idx
   on public.ai_conversations (user_id, updated_at desc);
 create index if not exists ai_messages_user_conversation_created_idx
   on public.ai_messages (user_id, conversation_id, created_at);
 
+-- Tabela: Registro interno para limitar solicitações do assistente (ai_usage_events).
 create table if not exists public.ai_usage_events (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -35,6 +41,7 @@ create index if not exists ai_usage_events_user_created_idx
 create index if not exists ai_usage_events_created_idx
   on public.ai_usage_events (created_at);
 
+-- Seção: bloqueia acesso anônimo e restringe o histórico ao proprietário.
 alter table public.ai_conversations enable row level security;
 alter table public.ai_messages enable row level security;
 alter table public.ai_usage_events enable row level security;
@@ -55,6 +62,7 @@ create policy "Users can manage their own AI messages"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- Função: aplica limites individuais de uso sem expor o contador ao usuário.
 create or replace function public.consume_fluxary_ai_request()
 returns boolean
 language plpgsql

@@ -1,4 +1,5 @@
--- Registra a conta de origem das despesas e dos pagamentos de fatura.
+-- Migração: vínculo das movimentações com suas contas de origem.
+-- Seção: adiciona e valida a relação de conta em lançamentos (transactions).
 alter table public.transactions
   add column if not exists account_id text null;
 
@@ -12,6 +13,7 @@ alter table public.transactions
     references public.accounts (user_id, id)
     on delete restrict;
 
+-- Índice: acelera a consulta de movimentações por conta do usuário.
 create index if not exists transactions_user_account_idx
   on public.transactions (user_id, account_id, transaction_date desc)
   where account_id is not null;
