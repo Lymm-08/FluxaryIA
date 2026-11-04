@@ -13,7 +13,7 @@ export function ResetFinanceDialog({ onKeepCardHistory, onDeleteCardHistory, onC
         <div className="confirm-dialog-icon danger"><AlertTriangle size={20} /></div>
         <h2 id="reset-finance-title">Zerar os dados financeiros do mês?</h2>
         <p id="reset-finance-message">
-          As movimentações deste mês serão excluídas e o saldo será zerado. O que deseja fazer com o histórico do cartão de crédito deste mês? Movimentações de outros meses serão preservadas.
+          As movimentações deste mês serão excluídas e o saldo será zerado. Se escolher apagar o cartão também, todo o histórico de compras e pagamentos dos cartões será removido. Caso contrário, o histórico dos cartões será mantido.
         </p>
         <div className="modal-actions reset-finance-actions">
           <button type="button" className="button-secondary" onClick={onCancel}><X size={14} /> Cancelar</button>

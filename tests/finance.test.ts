@@ -95,15 +95,17 @@ describe("regras financeiras", () => {
     expect(calculateTotals(reset.transactions, reset.accounts).balance).toBe(0);
   });
 
-  it("apaga também o histórico do cartão deste mês quando confirmado", () => {
+  it("apaga todo o histórico do cartão quando confirmado, inclusive parcelas de outros meses", () => {
     const transactions = [
       transaction({ id: "month-card-purchase", amount: 200, creditCardId: card.id, creditCardKind: "purchase" }),
-      transaction({ id: "month-card-payment", amount: 50, accountId: account.id, creditCardId: card.id, creditCardKind: "payment" }),
+      transaction({ id: "old-card-payment", transaction_date: "2025-01-15", amount: 50, accountId: account.id, creditCardId: card.id, creditCardKind: "payment" }),
+      transaction({ id: "future-card-installment", transaction_date: "2099-01-15", amount: 100, creditCardId: card.id, creditCardKind: "purchase", isSettled: false }),
+      transaction({ id: "old-cash-expense", transaction_date: "2025-01-15", amount: 75, accountId: account.id }),
     ];
 
     const reset = resetMonthlyFinance(transactions, [account], today.slice(0, 7), true);
 
-    expect(reset.transactions).toEqual([]);
+    expect(reset.transactions.map((item) => item.id)).toEqual(["old-cash-expense"]);
     expect(calculateTotals(reset.transactions, reset.accounts).balance).toBe(0);
   });
 

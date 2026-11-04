@@ -15,11 +15,13 @@ export function resetMonthlyFinance(
   month: string,
   deleteCardHistory: boolean,
 ) {
-  const remainingTransactions = transactions.filter((item) =>
-    !item.transaction_date.startsWith(month)
-    || Boolean(item.cashBoxKind)
-    || (!deleteCardHistory && Boolean(item.creditCardId || item.creditCardKind)),
-  );
+  const remainingTransactions = transactions.filter((item) => {
+    const isCardTransaction = Boolean(item.creditCardId || item.creditCardKind);
+    if (deleteCardHistory && isCardTransaction) return false;
+    return !item.transaction_date.startsWith(month)
+      || Boolean(item.cashBoxKind)
+      || (!deleteCardHistory && isCardTransaction);
+  });
   const resetAccounts = accounts.map((account) => ({
     ...account,
     balance: account.balance - getAccountBalance(account, remainingTransactions),
