@@ -31,6 +31,12 @@ export type CustomBankRow = OwnedRow & { name: string; emoji: string; color: str
 export type BudgetRow = OwnedRow & { category: string; category_id: string | null; monthly_limit: number };
 export type GoalRow = OwnedRow & { name: string; target: number; saved: number; deadline: string | null };
 export type CashBoxRow = OwnedRow & { name: string };
+export type AiConversationRow = {
+  id: string; user_id: string; title: string; created_at: string; updated_at: string;
+};
+export type AiMessageRow = {
+  id: string; conversation_id: string; user_id: string; role: "user" | "assistant"; content: string; created_at: string;
+};
 export type ProfileRow = { id: string; email: string; display_name: string; created_at: string; updated_at: string };
 export type UserSettingsRow = { user_id: string; monthly_budget: number | null; dark_mode: boolean; dashboard_widgets: string[]; created_at: string; updated_at: string };
 
@@ -47,9 +53,14 @@ export type Database = {
       budgets: Table<BudgetRow, Omit<BudgetRow, "created_at" | "updated_at">>;
       financial_goals: Table<GoalRow, Omit<GoalRow, "created_at" | "updated_at">>;
       cash_boxes: Table<CashBoxRow, Omit<CashBoxRow, "created_at" | "updated_at">>;
+      ai_conversations: Table<AiConversationRow, { id?: string; user_id: string; title: string; created_at?: string; updated_at?: string }>;
+      ai_messages: Table<AiMessageRow, { id?: string; conversation_id: string; user_id: string; role: "user" | "assistant"; content: string; created_at?: string }>;
+      ai_usage_events: Table<{ id: number; user_id: string; created_at: string }, never, never>;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      consume_fluxary_ai_request: { Args: Record<string, never>; Returns: boolean };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

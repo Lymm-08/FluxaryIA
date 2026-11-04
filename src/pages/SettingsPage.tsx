@@ -84,7 +84,7 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
         <article className="panel settings-card settings-reset-card">
           <div className="settings-card-heading">
             <span className="settings-icon"><RotateCcw size={17} /></span>
-            <div><h2>Saldo do mês</h2><p>Zere o saldo atual sem apagar lançamentos nem alterar o histórico.</p></div>
+            <div><h2>Saldo do mês</h2><p>Zere o saldo e apague as receitas e despesas deste mês. O histórico de outros meses será preservado.</p></div>
           </div>
           <button className="button-secondary settings-reset-button" type="button" onClick={onResetBalance}>
             <RotateCcw size={14} /> Zerar saldo do mês

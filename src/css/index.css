@@ -27,6 +27,7 @@
 @import "./pages/movements.css";
 @import "./pages/settings.css";
 @import "./pages/auth.css";
+@import "./pages/chat.css";
 
 /* Tema e ajustes finais sobrescrevem os estilos anteriores. */
 @import "./shared/theme-surfaces.css";

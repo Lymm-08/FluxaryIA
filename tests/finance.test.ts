@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Account, CreditCardItem, Transaction } from "../src/types/finance";
-import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage, getCashBoxBalance } from "../src/utils/finance";
+import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage, getCashBoxBalance, resetMonthlyFinance } from "../src/utils/finance";
 import { localDateString, parseAmount } from "../src/utils/format";
 
 const today = localDateString(new Date());
@@ -65,6 +65,21 @@ describe("regras financeiras", () => {
     expect(calculateTotals([deposit], [account])).toEqual({ income: 0, expenses: 0, balance: 750 });
     expect(calculateTotals([deposit, withdrawal], [account])).toEqual({ income: 0, expenses: 0, balance: 800 });
     expect(calculateProjectedBalance([deposit, withdrawal], [account], [])).toBe(800);
+  });
+
+  it("zera saldo, receitas e despesas do mês preservando histórico e movimentações de caixinhas", () => {
+    const transactions = [
+      transaction({ id: "history-income", transaction_date: "2025-12-15", type: "income", amount: 200, accountId: account.id }),
+      transaction({ id: "history-expense", transaction_date: "2025-12-20", amount: 100, accountId: account.id }),
+      transaction({ id: "month-income", type: "income", amount: 500, accountId: account.id }),
+      transaction({ id: "month-expense", amount: 250, accountId: account.id }),
+      transaction({ id: "month-cash-box", amount: 40, accountId: account.id, cashBoxId: "travel", cashBoxKind: "deposit" }),
+    ];
+
+    const reset = resetMonthlyFinance(transactions, [account], today.slice(0, 7));
+
+    expect(reset.transactions.map((item) => item.id)).toEqual(["history-income", "history-expense", "month-cash-box"]);
+    expect(calculateTotals(reset.transactions, reset.accounts)).toEqual({ income: 0, expenses: 0, balance: 0 });
   });
 
   it("calcula limite do cartão considerando compras, pagamentos e agendamentos", () => {

@@ -5,11 +5,13 @@ import { CardsPage } from "../pages/CardsPage";
 import { GoalsPage } from "../pages/GoalsPage";
 import { CashBoxesPage } from "../pages/CashBoxesPage";
 import { PlanningPage } from "../pages/PlanningPage";
+import { ChatPage } from "../pages/ChatPage";
 import type { Account, BudgetPlan, CashBox, Category, CreditCardItem, CustomBank, FinancialGoal, Transaction } from "../types/finance";
 
 // Encaminha cada seção para sua página isolada.
-export function SectionRouter({ page, transactions, categories, accounts, cards, customBanks, plans, goals, cashBoxes, accountBalances, cashBoxSchemaReady, handlers }: {
+export function SectionRouter({ page, userId, transactions, categories, accounts, cards, customBanks, plans, goals, cashBoxes, accountBalances, cashBoxSchemaReady, handlers }: {
   page: string;
+  userId: string;
   transactions: Transaction[];
   categories: Category[];
   accounts: Account[];
@@ -63,6 +65,8 @@ export function SectionRouter({ page, transactions, categories, accounts, cards,
         onCreate={handlers.addCashBox}
         onDeposit={handlers.depositCashBox}
       />;
+    case "Chat Fluxary":
+      return <ChatPage key={userId} userId={userId} />;
     default:
       return <section className="panel coming-soon-panel"><div className="goal-illustration"><Sparkles size={18} /></div><h2>Estamos preparando este espaço para você.</h2><p>Seus dados continuarão seguros e privados.</p></section>;
   }

@@ -9,6 +9,17 @@ export function getAccountBalance(account: Account, transactions: Transaction[])
   return account.balance + movement;
 }
 
+export function resetMonthlyFinance(transactions: Transaction[], accounts: Account[], month: string) {
+  const remainingTransactions = transactions.filter((item) =>
+    !item.transaction_date.startsWith(month) || Boolean(item.cashBoxKind),
+  );
+  const resetAccounts = accounts.map((account) => ({
+    ...account,
+    balance: account.balance - getAccountBalance(account, remainingTransactions),
+  }));
+  return { transactions: remainingTransactions, accounts: resetAccounts };
+}
+
 // Combina saldos líquidos das contas com lançamentos do mês sem conta associada.
 export function calculateTotals(transactions: Transaction[], accounts: Account[] = []): Totals {
   const month = localDateString(new Date()).slice(0, 7);

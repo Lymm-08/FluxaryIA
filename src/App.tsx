@@ -15,7 +15,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import type {
   Account, BudgetPlan, CashBox, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
 } from "./types/finance";
-import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage } from "./utils/finance";
+import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage, resetMonthlyFinance } from "./utils/finance";
 import { localDateString, parseAmount } from "./utils/format";
 import { money } from "./utils/format";
 import type { MascotExpression } from "./components/MascotCompanion";
@@ -276,7 +276,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     setBalanceMode(mode);
   }
 
-  function saveBalance(amount: number, mode: BalanceMode, action: "initial" | "adjust" | "reset" = mode) {
+  function saveBalance(amount: number, mode: BalanceMode) {
     if (!Number.isFinite(amount) || (mode === "initial" && amount <= 0)) {
       setError("Informe um valor válido para o saldo.");
       return;
@@ -298,7 +298,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
 
     const transaction: Transaction = {
       id: crypto.randomUUID(),
-      description: action === "initial" ? "Saldo inicial" : action === "reset" ? "Zeragem de saldo" : "Ajuste de saldo",
+      description: mode === "initial" ? "Saldo inicial" : "Ajuste de saldo",
       category: category.name,
       categoryId: category.id,
       transaction_date: localDateString(new Date()),
@@ -314,13 +314,16 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
 
   async function resetMonthlyBalance() {
     const confirmed = await askConfirmation({
-      title: "Zerar o saldo atual?",
-      message: "Seus lançamentos e o histórico serão preservados. Um ajuste será registrado para deixar o saldo em R$ 0,00.",
+      title: "Zerar os dados financeiros do mês?",
+      message: "As receitas e despesas deste mês serão excluídas e o saldo será zerado. Os lançamentos de outros meses serão preservados.",
       confirmLabel: "Zerar saldo",
       danger: true,
     });
     if (!confirmed) return;
-    saveBalance(0, "adjust", "reset");
+    const reset = resetMonthlyFinance(finance.transactions, finance.accounts, today.slice(0, 7));
+    finance.setTransactions(reset.transactions);
+    finance.setAccounts(reset.accounts);
+    setError("");
   }
 
   function openMonthlyMovements(type: TransactionType) {
@@ -869,7 +872,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
         />
       ) : (
         <SectionRouter
-          page={page} transactions={finance.transactions} categories={finance.categories} accounts={finance.accounts}
+          page={page} userId={userId ?? ""} transactions={finance.transactions} categories={finance.categories} accounts={finance.accounts}
           cards={finance.cards} customBanks={finance.customBanks} plans={finance.plans} goals={finance.goals}
           cashBoxes={finance.cashBoxes} accountBalances={accountBalances}
           cashBoxSchemaReady={finance.cashBoxSchemaReady}
