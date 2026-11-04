@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Account, CreditCardItem, Transaction } from "../src/types/finance";
-import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage, getCashBoxBalance, resetMonthlyFinance } from "../src/utils/finance";
+import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardInvoiceBalance, getCardUsage, getCashBoxBalance, resetMonthlyFinance } from "../src/utils/finance";
 import { localDateString, parseAmount } from "../src/utils/format";
 
 const today = localDateString(new Date());
@@ -76,10 +76,35 @@ describe("regras financeiras", () => {
       transaction({ id: "month-cash-box", amount: 40, accountId: account.id, cashBoxId: "travel", cashBoxKind: "deposit" }),
     ];
 
-    const reset = resetMonthlyFinance(transactions, [account], today.slice(0, 7));
+    const reset = resetMonthlyFinance(transactions, [account], today.slice(0, 7), true);
 
     expect(reset.transactions.map((item) => item.id)).toEqual(["history-income", "history-expense", "month-cash-box"]);
     expect(calculateTotals(reset.transactions, reset.accounts)).toEqual({ income: 0, expenses: 0, balance: 0 });
+  });
+
+  it("mantém o histórico do cartão deste mês quando solicitado ao zerar o saldo", () => {
+    const transactions = [
+      transaction({ id: "month-income", type: "income", amount: 500, accountId: account.id }),
+      transaction({ id: "month-card-purchase", amount: 200, creditCardId: card.id, creditCardKind: "purchase" }),
+      transaction({ id: "month-card-payment", amount: 50, accountId: account.id, creditCardId: card.id, creditCardKind: "payment" }),
+    ];
+
+    const reset = resetMonthlyFinance(transactions, [account], today.slice(0, 7), false);
+
+    expect(reset.transactions.map((item) => item.id)).toEqual(["month-card-purchase", "month-card-payment"]);
+    expect(calculateTotals(reset.transactions, reset.accounts).balance).toBe(0);
+  });
+
+  it("apaga também o histórico do cartão deste mês quando confirmado", () => {
+    const transactions = [
+      transaction({ id: "month-card-purchase", amount: 200, creditCardId: card.id, creditCardKind: "purchase" }),
+      transaction({ id: "month-card-payment", amount: 50, accountId: account.id, creditCardId: card.id, creditCardKind: "payment" }),
+    ];
+
+    const reset = resetMonthlyFinance(transactions, [account], today.slice(0, 7), true);
+
+    expect(reset.transactions).toEqual([]);
+    expect(calculateTotals(reset.transactions, reset.accounts).balance).toBe(0);
   });
 
   it("calcula limite do cartão considerando compras, pagamentos e agendamentos", () => {
@@ -89,7 +114,13 @@ describe("regras financeiras", () => {
       transaction({ id: "payment", type: "expense", amount: 50, creditCardId: card.id, creditCardKind: "payment" }),
     ];
 
-    expect(getCardUsage(card, transactions)).toEqual({ used: 250, available: 750, progress: 25 });
+    expect(getCardUsage(card, transactions)).toEqual({ used: 350, available: 650, progress: 35 });
+    expect(getCardInvoiceBalance(card, transactions)).toBe(250);
+    const withoutScheduledPurchase = transactions.filter((item) => item.id !== "scheduled");
+    expect(calculateTotals(transactions).expenses).toBe(calculateTotals(withoutScheduledPurchase).expenses);
+    expect(calculateProjectedBalance(transactions, [], [card])).toBe(
+      calculateProjectedBalance(withoutScheduledPurchase, [], [card]),
+    );
   });
 
   it("avisa quando a fatura fecha na data configurada", () => {

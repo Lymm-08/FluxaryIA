@@ -1,7 +1,7 @@
 import { CollectionCard, CollectionPage } from "../components/CollectionPage";
 import { BankLogo } from "../components/BankLogo";
 import type { CreditCardItem, CustomBank, Transaction } from "../types/finance";
-import { getCardUsage } from "../utils/finance";
+import { getCardInvoiceBalance, getCardUsage } from "../utils/finance";
 import { money } from "../utils/format";
 
 // Cartões com limite, compras pendentes e progresso da fatura.
@@ -18,6 +18,7 @@ export function CardsPage({ cards, customBanks, transactions, onAdd, onEdit, onD
     <CollectionPage eyebrow="FLUXARY.IA · CRÉDITO" title="Cartões" description="Acompanhe o limite disponível e os gastos registrados no crédito." action={onAdd} empty={cards.length === 0}>
       {cards.map((card, index) => {
         const usage = getCardUsage(card, transactions);
+        const invoiceBalance = getCardInvoiceBalance(card, transactions);
         return (
           <CollectionCard
             key={card.id}
@@ -29,7 +30,7 @@ export function CardsPage({ cards, customBanks, transactions, onAdd, onEdit, onD
             progressLabel={`${money.format(usage.used)} utilizados`}
             onEdit={() => onEdit(card)}
             onDelete={() => onDelete(card)}
-            action={<button className="button-soft card-payment-button" type="button" disabled={usage.used <= 0} onClick={() => onPayCard(card)}>Pagar fatura</button>}
+            action={<button className="button-soft card-payment-button" type="button" disabled={invoiceBalance <= 0} onClick={() => onPayCard(card)}>Pagar fatura</button>}
           />
         );
       })}

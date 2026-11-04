@@ -1,4 +1,5 @@
 -- Migração: suporte a retiradas e consolidação do histórico das caixinhas.
+
 -- Seção: distingue aportes e retiradas no histórico de depósitos (cash_box_deposits).
 alter table public.cash_box_deposits
   add column if not exists direction text not null default 'deposit';

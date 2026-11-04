@@ -14,17 +14,18 @@ import { MascotCompanion, type MascotExpression } from "../components/MascotComp
 import { TransactionRow } from "../components/TransactionRow";
 import { BankLogo } from "../components/BankLogo";
 import type { CreditCardItem, CustomBank, DashboardWidget, FinancialGoal, Totals, Transaction, TransactionType } from "../types/finance";
-import { getCardUsage } from "../utils/finance";
+import { getCardInvoiceBalance, getCardUsage } from "../utils/finance";
 import { money } from "../utils/format";
 
 // Página inicial: saldo, resumo mensal, lançamentos e atalhos para metas.
 export function DashboardPage({
-  transactions, totals, projectedBalance, monthlyBudget, showValues, mascotExpression, mascotMessage, cards, customBanks, goals, dashboardWidgets,
+  transactions, cardTransactions, totals, projectedBalance, monthlyBudget, showValues, mascotExpression, mascotMessage, cards, customBanks, goals, dashboardWidgets,
   onToggleValues, onAdd, onAddGoal, onSetBudget, onNavigate,
   onOpenMovements, onPayCard, cloudAccount,
   onOpenTransaction, onOpenTransactions,
 }: {
   transactions: Transaction[];
+  cardTransactions: Transaction[];
   cards: CreditCardItem[];
   customBanks: CustomBank[];
   goals: FinancialGoal[];
@@ -109,7 +110,8 @@ export function DashboardPage({
           {cards.length ? (
             <div className="dashboard-card-list">
               {cards.map((card, index) => {
-                const usage = getCardUsage(card, transactions);
+                const usage = getCardUsage(card, cardTransactions);
+                const invoiceBalance = getCardInvoiceBalance(card, cardTransactions);
                 const cardLabel = `${card.issuer}${cards.filter((item) => item.issuer === card.issuer).length > 1 ? ` · ${index + 1}` : ""}`;
                 return (
                   <article className="dashboard-credit-card" key={card.id}>
@@ -121,7 +123,7 @@ export function DashboardPage({
                       </div>
                       <small>{money.format(usage.used)} de {money.format(card.creditLimit)} utilizados</small>
                     </div>
-                    <button className="button-soft dashboard-pay-card" type="button" disabled={usage.used <= 0} onClick={() => onPayCard(card)}>Pagar</button>
+                    <button className="button-soft dashboard-pay-card" type="button" disabled={invoiceBalance <= 0} onClick={() => onPayCard(card)}>Pagar</button>
                   </article>
                 );
               })}

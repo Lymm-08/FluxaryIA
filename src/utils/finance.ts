@@ -9,9 +9,16 @@ export function getAccountBalance(account: Account, transactions: Transaction[])
   return account.balance + movement;
 }
 
-export function resetMonthlyFinance(transactions: Transaction[], accounts: Account[], month: string) {
+export function resetMonthlyFinance(
+  transactions: Transaction[],
+  accounts: Account[],
+  month: string,
+  deleteCardHistory: boolean,
+) {
   const remainingTransactions = transactions.filter((item) =>
-    !item.transaction_date.startsWith(month) || Boolean(item.cashBoxKind),
+    !item.transaction_date.startsWith(month)
+    || Boolean(item.cashBoxKind)
+    || (!deleteCardHistory && Boolean(item.creditCardId || item.creditCardKind)),
   );
   const resetAccounts = accounts.map((account) => ({
     ...account,
@@ -39,9 +46,9 @@ export function calculateProjectedBalance(transactions: Transaction[], accounts:
   const actualBalance = calculateTotals(transactions, accounts).balance;
   const plannedBalanceChange = transactions
     .filter((item) => item.isSettled === false)
-    .filter((item) => item.creditCardKind !== "payment" && !item.cashBoxKind)
+    .filter((item) => item.creditCardKind !== "payment" && item.creditCardKind !== "purchase" && !item.cashBoxKind)
     .reduce((sum, item) => sum + (item.type === "income" ? item.amount : -item.amount), 0);
-  const unpaidCardBalances = cards.reduce((sum, card) => sum + getCardUsage(card, transactions).used, 0);
+  const unpaidCardBalances = cards.reduce((sum, card) => sum + getCardInvoiceBalance(card, transactions), 0);
   return actualBalance + plannedBalanceChange - unpaidCardBalances;
 }
 
@@ -53,17 +60,28 @@ export function getCashBoxBalance(cashBoxId: string, transactions: Transaction[]
 
 export function getCardUsage(card: CreditCardItem, transactions: Transaction[]) {
   const purchases = transactions
-    .filter((item) => item.isSettled !== false && item.creditCardId === card.id && item.creditCardKind === "purchase")
+    .filter((item) => item.creditCardId === card.id && item.creditCardKind === "purchase")
     .reduce((sum, item) => sum + item.amount, 0);
-  const payments = transactions
+  const settledPayments = transactions
     .filter((item) => item.isSettled !== false && item.creditCardId === card.id && item.creditCardKind === "payment")
     .reduce((sum, item) => sum + item.amount, 0);
-  const used = Math.max(0, purchases - payments);
+  const used = Math.max(0, purchases - settledPayments);
   return {
     used,
     available: card.creditLimit - used,
     progress: card.creditLimit > 0 ? Math.min(100, (used / card.creditLimit) * 100) : 0,
   };
+}
+
+// Agendamentos reservam limite, mas ainda não fazem parte do valor pagável da fatura.
+export function getCardInvoiceBalance(card: CreditCardItem, transactions: Transaction[]) {
+  const purchases = transactions
+    .filter((item) => item.isSettled !== false && item.creditCardId === card.id && item.creditCardKind === "purchase")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const payments = transactions
+    .filter((item) => item.isSettled !== false && item.creditCardId === card.id && item.creditCardKind === "payment")
+    .reduce((sum, item) => sum + item.amount, 0);
+  return Math.max(0, purchases - payments);
 }
 
 export type CardBillingNotice = {
@@ -95,7 +113,7 @@ export function getCardBillingNotice(card: CreditCardItem, transactions: Transac
       ),
     )
     .reduce((balance, item) => balance + (item.creditCardKind === "purchase" ? item.amount : -item.amount), 0);
-  const outstanding = getCardUsage(card, transactions).used;
+  const outstanding = getCardInvoiceBalance(card, transactions);
   const dueToReport = lastDue >= currentDate ? lastDue : upcomingDue;
   const dueBalance = lastDue >= currentDate ? balanceAtLastDue : outstanding;
 

@@ -1,21 +1,24 @@
-import { PiggyBank, Plus, Wallet } from "lucide-react";
+import { Pencil, PiggyBank, Plus, Trash2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { CashBoxModal } from "../components/CashBoxModal";
 import type { Account, CashBox, Transaction } from "../types/finance";
 import { getCashBoxBalance } from "../utils/finance";
 import { money } from "../utils/format";
 
-export function CashBoxesPage({ cashBoxes, transactions, accounts, accountBalances, schemaReady, onCreate, onDeposit }: {
+export function CashBoxesPage({ cashBoxes, transactions, accounts, accountBalances, schemaReady, onCreate, onRename, onDelete, onDeposit }: {
   cashBoxes: CashBox[];
   transactions: Transaction[];
   accounts: Account[];
   accountBalances: Record<string, number>;
   schemaReady: boolean;
   onCreate: (name: string) => boolean;
+  onRename: (cashBox: CashBox, name: string) => boolean;
+  onDelete: (cashBox: CashBox) => void;
   onDeposit: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") => boolean;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [cashBoxToFund, setCashBoxToFund] = useState<CashBox | null>(null);
+  const [cashBoxToEdit, setCashBoxToEdit] = useState<CashBox | null>(null);
   const [movementKind, setMovementKind] = useState<"deposit" | "withdrawal">("deposit");
 
   return (
@@ -45,6 +48,14 @@ export function CashBoxesPage({ cashBoxes, transactions, accounts, accountBalanc
               <span className="collection-subtitle">Dinheiro separado do saldo das contas</span>
               <strong className="collection-value">{money.format(getCashBoxBalance(cashBox.id, transactions))}</strong>
               <div className="cash-box-actions">
+                <button type="button" className="button-secondary cash-box-deposit-button" onClick={() => setCashBoxToEdit(cashBox)} disabled={!schemaReady}>
+                  <Pencil size={14} /> Editar
+                </button>
+                <button type="button" className="button-secondary cash-box-deposit-button" onClick={() => onDelete(cashBox)} disabled={!schemaReady}>
+                  <Trash2 size={14} /> Excluir
+                </button>
+              </div>
+              <div className="cash-box-actions">
                 <button type="button" className="button-soft cash-box-deposit-button" onClick={() => {
                   setMovementKind("deposit");
                   setCashBoxToFund(cashBox);
@@ -62,17 +73,21 @@ export function CashBoxesPage({ cashBoxes, transactions, accounts, accountBalanc
           ))}
         </div>
       )}
-      {(createOpen || cashBoxToFund) && (
+      {(createOpen || cashBoxToFund || cashBoxToEdit) && (
         <CashBoxModal
-          cashBox={cashBoxToFund}
+          key={cashBoxToEdit ? `edit-${cashBoxToEdit.id}` : cashBoxToFund ? `fund-${cashBoxToFund.id}-${movementKind}` : "create"}
+          cashBox={cashBoxToEdit ?? cashBoxToFund}
+          editing={Boolean(cashBoxToEdit)}
           movementKind={movementKind}
           accounts={accounts}
           accountBalances={accountBalances}
           onClose={() => {
             setCreateOpen(false);
             setCashBoxToFund(null);
+            setCashBoxToEdit(null);
           }}
           onCreate={onCreate}
+          onRename={onRename}
           onDeposit={onDeposit}
         />
       )}

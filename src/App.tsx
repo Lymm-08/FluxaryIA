@@ -15,13 +15,14 @@ import { SettingsPage } from "./pages/SettingsPage";
 import type {
   Account, BudgetPlan, CashBox, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
 } from "./types/finance";
-import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardUsage, resetMonthlyFinance } from "./utils/finance";
+import { calculateProjectedBalance, calculateTotals, getAccountBalance, getCardBillingNotice, getCardInvoiceBalance, getCardUsage, resetMonthlyFinance } from "./utils/finance";
 import { localDateString, parseAmount } from "./utils/format";
 import { money } from "./utils/format";
 import type { MascotExpression } from "./components/MascotCompanion";
 import { MovementsPage } from "./pages/MovementsPage";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { TransactionDetailsModal } from "./components/TransactionDetailsModal";
+import { ResetFinanceDialog } from "./components/ResetFinanceDialog";
 
 type ConfirmationRequest = { title: string; message: string; confirmLabel: string; danger: boolean };
 // Decide entre conta autenticada, recuperação de senha e modo local.
@@ -68,6 +69,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
 }) {
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
+  const [resetFinanceDialogOpen, setResetFinanceDialogOpen] = useState(false);
   const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
   const reportError = useCallback((message: string) => setError(message), []);
   const finance = useFinanceData(reportError, userId);
@@ -312,17 +314,15 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     setError("");
   }
 
-  async function resetMonthlyBalance() {
-    const confirmed = await askConfirmation({
-      title: "Zerar os dados financeiros do mês?",
-      message: "As receitas e despesas deste mês serão excluídas e o saldo será zerado. Os lançamentos de outros meses serão preservados.",
-      confirmLabel: "Zerar saldo",
-      danger: true,
-    });
-    if (!confirmed) return;
-    const reset = resetMonthlyFinance(finance.transactions, finance.accounts, today.slice(0, 7));
+  function resetMonthlyBalance() {
+    setResetFinanceDialogOpen(true);
+  }
+
+  function applyMonthlyReset(deleteCardHistory: boolean) {
+    const reset = resetMonthlyFinance(finance.transactions, finance.accounts, today.slice(0, 7), deleteCardHistory);
     finance.setTransactions(reset.transactions);
     finance.setAccounts(reset.accounts);
+    setResetFinanceDialogOpen(false);
     setError("");
   }
 
@@ -426,7 +426,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       && transactionToEdit.creditCardId === card?.id
       ? transactionToEdit.amount
       : 0;
-    if (usesCard && !isScheduled && usage && amount > usage.available + previousPurchase - previousPayment) {
+    if (usesCard && usage && amount > usage.available + previousPurchase - previousPayment) {
       const availableBeforePurchase = usage.available + previousPurchase - previousPayment;
       if (!await askConfirmation({
         title: "Compra acima do limite",
@@ -435,7 +435,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
         danger: true,
       })) return false;
     }
-    if (!isScheduled && isCardPayment && usage && amount > usage.used + previousPayment - previousPurchase) {
+    if (!isScheduled && isCardPayment && card && amount > getCardInvoiceBalance(card, finance.transactions) + previousPayment - previousPurchase) {
       setError("O pagamento não pode ser maior que o valor em aberto neste cartão.");
       return;
     }
@@ -486,7 +486,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     if (!transaction || transaction.isSettled !== false) return false;
     if (transaction.creditCardKind === "payment") {
       const card = finance.cards.find((item) => item.id === transaction.creditCardId);
-      if (card && transaction.amount > getCardUsage(card, finance.transactions).used) {
+      if (card && transaction.amount > getCardInvoiceBalance(card, finance.transactions)) {
         setError("O pagamento agendado é maior que o valor em aberto neste cartão.");
         return false;
       }
@@ -540,8 +540,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       confirmLabel: "Pagar mesmo assim",
       danger: true,
     })) return;
-    const usage = getCardUsage(card, finance.transactions);
-    if (amount > usage.used) {
+    if (amount > getCardInvoiceBalance(card, finance.transactions)) {
       setError("O pagamento não pode ser maior que o valor em aberto neste cartão.");
       return;
     }
@@ -760,6 +759,41 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     return true;
   }
 
+  function renameCashBox(cashBox: CashBox, name: string) {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      setError("Dê um nome para a caixinha.");
+      return false;
+    }
+    if (finance.cashBoxes.some((item) =>
+      item.id !== cashBox.id
+      && item.name.localeCompare(normalizedName, "pt-BR", { sensitivity: "base" }) === 0,
+    )) {
+      setError("Já existe uma caixinha com esse nome.");
+      return false;
+    }
+    finance.setCashBoxes((current) => current.map((item) =>
+      item.id === cashBox.id ? { ...item, name: normalizedName } : item,
+    ));
+    setError("");
+    return true;
+  }
+
+  async function deleteCashBox(cashBox: CashBox) {
+    if (finance.transactions.some((item) => item.cashBoxId === cashBox.id)) {
+      setError("Esta caixinha tem movimentações vinculadas. Mantenha-a para preservar o histórico financeiro.");
+      return;
+    }
+    if (!await askConfirmation({
+      title: "Excluir caixinha?",
+      message: `Deseja excluir “${cashBox.name}”? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Excluir caixinha",
+      danger: true,
+    })) return;
+    finance.setCashBoxes((current) => current.filter((item) => item.id !== cashBox.id));
+    setError("");
+  }
+
   function moveCashBoxMoney(cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") {
     const account = finance.accounts.find((item) => item.id === accountId);
     if (!finance.cashBoxes.some((item) => item.id === cashBox.id) || !account) {
@@ -841,7 +875,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       <ErrorNotice message={error} onClose={() => setError("")} />
       {page === "Visão geral" ? (
         <DashboardPage
-          transactions={dashboardTransactions} totals={totals} projectedBalance={projectedBalance} monthlyBudget={monthlyBudget} showValues={showValues}
+          transactions={dashboardTransactions} cardTransactions={finance.transactions} totals={totals} projectedBalance={projectedBalance} monthlyBudget={monthlyBudget} showValues={showValues}
           cards={finance.cards} customBanks={finance.customBanks} goals={finance.goals} dashboardWidgets={finance.dashboardWidgets}
           mascotExpression={mascotExpression} mascotMessage={mascotMessage}
           onToggleValues={() => setShowValues((value) => !value)}
@@ -895,6 +929,8 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
             editGoal: (entry) => openFinanceEntry("goal", entry),
             deleteGoal: (entry) => removeEntry("goal", entry),
             addCashBox: createCashBox,
+            renameCashBox,
+            deleteCashBox,
             depositCashBox: moveCashBoxMoney,
           }}
         />
@@ -943,7 +979,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       {cardPaymentTarget && (
         <CardPaymentModal
           card={cardPaymentTarget}
-          used={getCardUsage(cardPaymentTarget, finance.transactions).used}
+          used={getCardInvoiceBalance(cardPaymentTarget, finance.transactions)}
           accounts={finance.accounts}
           selectedAccountId={selectedAccountId}
           transactions={finance.transactions}
@@ -988,6 +1024,13 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
           {...confirmation}
           onConfirm={() => settleConfirmation(true)}
           onCancel={() => settleConfirmation(false)}
+        />
+      )}
+      {resetFinanceDialogOpen && (
+        <ResetFinanceDialog
+          onKeepCardHistory={() => applyMonthlyReset(false)}
+          onDeleteCardHistory={() => applyMonthlyReset(true)}
+          onCancel={() => setResetFinanceDialogOpen(false)}
         />
       )}
     </AppShell>

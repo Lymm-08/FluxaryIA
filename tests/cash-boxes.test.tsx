@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CashBoxesPage } from "../src/pages/CashBoxesPage";
 import { DashboardPage } from "../src/pages/DashboardPage";
 import { MovementsPage } from "../src/pages/MovementsPage";
-import type { Account, CashBox, Transaction } from "../src/types/finance";
+import { ResetFinanceDialog } from "../src/components/ResetFinanceDialog";
+import type { Account, CashBox, CreditCardItem, Transaction } from "../src/types/finance";
 import { calculateTotals } from "../src/utils/finance";
 
 afterEach(cleanup);
@@ -39,6 +40,8 @@ describe("caixinhas", () => {
         accountBalances={{ [account.id]: 375 }}
         schemaReady
         onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
         onDeposit={onDeposit}
       />,
     );
@@ -53,6 +56,29 @@ describe("caixinhas", () => {
     expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 75.5, "deposit");
   });
 
+  describe("confirmação ao zerar os dados financeiros", () => {
+    it("oferece manter ou apagar o histórico do cartão, além de cancelar", () => {
+      const onKeepCardHistory = vi.fn();
+      const onDeleteCardHistory = vi.fn();
+      const onCancel = vi.fn();
+      render(
+        <ResetFinanceDialog
+          onKeepCardHistory={onKeepCardHistory}
+          onDeleteCardHistory={onDeleteCardHistory}
+          onCancel={onCancel}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Não, manter cartão/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Sim, apagar tudo/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Cancelar/ }));
+
+      expect(onKeepCardHistory).toHaveBeenCalledOnce();
+      expect(onDeleteCardHistory).toHaveBeenCalledOnce();
+      expect(onCancel).toHaveBeenCalledOnce();
+    });
+  });
+
   it("permite retirar dinheiro e escolher a conta de destino", () => {
     const onDeposit = vi.fn().mockReturnValue(true);
     render(
@@ -63,6 +89,8 @@ describe("caixinhas", () => {
         accountBalances={{ [account.id]: 375 }}
         schemaReady
         onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
         onDeposit={onDeposit}
       />,
     );
@@ -74,6 +102,32 @@ describe("caixinhas", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Retirar dinheiro" })[1]);
 
     expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 25.5, "withdrawal");
+  });
+
+  it("permite editar o nome e solicitar a exclusão da caixinha", () => {
+    const onRename = vi.fn().mockReturnValue(true);
+    const onDelete = vi.fn();
+    render(
+      <CashBoxesPage
+        cashBoxes={[cashBox]}
+        transactions={[]}
+        accounts={[account]}
+        accountBalances={{ [account.id]: 500 }}
+        schemaReady
+        onCreate={vi.fn()}
+        onRename={onRename}
+        onDelete={onDelete}
+        onDeposit={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Nome da caixinha" }), { target: { value: "Férias" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    expect(onRename).toHaveBeenCalledWith(cashBox, "Férias");
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    expect(onDelete).toHaveBeenCalledWith(cashBox);
   });
 
   it("mostra aportes e retiradas em Movimentações sem tratá-los como despesa ou receita", () => {
@@ -119,6 +173,7 @@ describe("caixinhas", () => {
     render(
       <DashboardPage
         transactions={transactions}
+        cardTransactions={transactions}
         totals={calculateTotals(transactions, [account])}
         projectedBalance={375}
         monthlyBudget={null}
@@ -148,6 +203,56 @@ describe("caixinhas", () => {
     expect(calculateTotals(transactions, [account]).balance).toBe(375);
   });
 
+  it("usa todas as movimentações para reservar compras agendadas no limite do cartão", () => {
+    const card: CreditCardItem = {
+      id: "card-1",
+      name: "Cartão",
+      issuer: "Banco Fluxary",
+      creditLimit: 1000,
+    };
+    const scheduledPurchase: Transaction = {
+      id: "future-card-purchase",
+      description: "Compra agendada",
+      category: "Compras",
+      transaction_date: "2099-01-15",
+      amount: 125,
+      type: "expense",
+      isSettled: false,
+      creditCardId: card.id,
+      creditCardKind: "purchase",
+    };
+    render(
+      <DashboardPage
+        transactions={[]}
+        cardTransactions={[scheduledPurchase]}
+        totals={{ income: 0, expenses: 0, balance: 0 }}
+        projectedBalance={0}
+        monthlyBudget={null}
+        showValues
+        mascotExpression="encouragement"
+        mascotMessage="Vamos acompanhar seu saldo."
+        cards={[card]}
+        customBanks={[]}
+        goals={[]}
+        dashboardWidgets={["cards"]}
+        onToggleValues={vi.fn()}
+        onAdd={vi.fn()}
+        onAddGoal={vi.fn()}
+        onSetBudget={vi.fn()}
+        onNavigate={vi.fn()}
+        onOpenMovements={vi.fn()}
+        onPayCard={vi.fn()}
+        cloudAccount
+        onOpenTransaction={vi.fn()}
+        onOpenTransactions={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/125,00 de .* utilizados/)).toBeTruthy();
+    expect(screen.getByText(/Disponível .*875,00/)).toBeTruthy();
+    expect(screen.getByText(/Seu começo merece ser celebrado/)).toBeTruthy();
+  });
+
   it("solicita a migration no Supabase sem desativar as outras telas", () => {
     render(
       <CashBoxesPage
@@ -157,6 +262,8 @@ describe("caixinhas", () => {
         accountBalances={{}}
         schemaReady={false}
         onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
         onDeposit={vi.fn()}
       />,
     );

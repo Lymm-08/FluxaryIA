@@ -41,6 +41,8 @@ export function SectionRouter({ page, userId, transactions, categories, accounts
     editGoal: (goal: FinancialGoal) => void;
     deleteGoal: (goal: FinancialGoal) => void;
     addCashBox: (name: string) => boolean;
+    renameCashBox: (cashBox: CashBox, name: string) => boolean;
+    deleteCashBox: (cashBox: CashBox) => void;
     depositCashBox: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") => boolean;
   };
 }) {
@@ -63,6 +65,8 @@ export function SectionRouter({ page, userId, transactions, categories, accounts
         accountBalances={accountBalances}
         schemaReady={cashBoxSchemaReady}
         onCreate={handlers.addCashBox}
+        onRename={handlers.renameCashBox}
+        onDelete={handlers.deleteCashBox}
         onDeposit={handlers.depositCashBox}
       />;
     case "Chat Fluxary":

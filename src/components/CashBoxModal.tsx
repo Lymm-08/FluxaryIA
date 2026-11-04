@@ -1,16 +1,18 @@
-import { Plus, Wallet, X } from "lucide-react";
+import { Check, Plus, Wallet, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import type { Account, CashBox } from "../types/finance";
 import { parseAmount } from "../utils/format";
 import { StyledSelect } from "./StyledSelect";
 
-export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCreate, onDeposit, movementKind }: {
+export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCreate, onRename, onDeposit, movementKind, editing = false }: {
   cashBox: CashBox | null;
   accounts: Account[];
   accountBalances: Record<string, number>;
   onClose: () => void;
   onCreate: (name: string) => boolean;
+  onRename: (cashBox: CashBox, name: string) => boolean;
   movementKind: "deposit" | "withdrawal";
+  editing?: boolean;
   onDeposit: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") => boolean;
 }) {
   const availableAccounts = movementKind === "deposit"
@@ -18,10 +20,15 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
     : accounts;
   const [accountId, setAccountId] = useState(availableAccounts[0]?.id ?? "");
   const [amount, setAmount] = useState("");
+  const [name, setName] = useState(cashBox?.name ?? "");
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (editing && cashBox) {
+      if (onRename(cashBox, name.trim())) onClose();
+      return;
+    }
     if (!cashBox) {
       if (onCreate(String(form.get("cash-box-name") ?? "").trim())) onClose();
       return;
@@ -39,11 +46,16 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
         <div className="modal-heading">
           <div>
             <span className="eyebrow">FLUXARY.IA · ORGANIZAÇÃO</span>
-            <h2>{cashBox ? movementKind === "deposit" ? `Guardar na ${cashBox.name}` : `Retirar da ${cashBox.name}` : "Criar caixinha"}</h2>
+            <h2>{editing ? "Editar caixinha" : cashBox ? movementKind === "deposit" ? `Guardar na ${cashBox.name}` : `Retirar da ${cashBox.name}` : "Criar caixinha"}</h2>
           </div>
           <button type="button" className="icon-button" aria-label="Fechar" onClick={onClose}><X size={18} /></button>
         </div>
-        {cashBox ? (
+        {editing && cashBox ? (
+          <>
+            <p className="cash-box-form-copy">Altere o nome sem modificar os aportes, retiradas ou o histórico desta caixinha.</p>
+            <label>Nome da caixinha<input name="cash-box-name" value={name} onChange={(event) => setName(event.target.value)} required maxLength={60} autoFocus /></label>
+          </>
+        ) : cashBox ? (
           <>
             <p className="cash-box-form-copy">
               {movementKind === "deposit"
@@ -89,8 +101,10 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
         )}
         <div className="modal-actions">
           <button type="button" className="button-secondary" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="button-primary" disabled={Boolean(cashBox && availableAccounts.length === 0)}>
-            {cashBox
+          <button type="submit" className="button-primary" disabled={Boolean(cashBox && !editing && availableAccounts.length === 0)}>
+            {editing
+              ? <><Check size={14} /> Salvar alterações</>
+              : cashBox
               ? <><Wallet size={14} /> {movementKind === "deposit" ? "Guardar dinheiro" : "Retirar dinheiro"}</>
               : <><Plus size={14} /> Criar caixinha</>}
           </button>

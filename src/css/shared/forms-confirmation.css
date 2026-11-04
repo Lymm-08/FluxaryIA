@@ -49,6 +49,14 @@
   margin-top: 22px;
 }
 
+.confirm-dialog .reset-finance-actions {
+  flex-direction: column;
+}
+
+.reset-finance-actions button {
+  width: 100%;
+}
+
 .button-danger {
   min-height: 36px;
   display: inline-flex;
