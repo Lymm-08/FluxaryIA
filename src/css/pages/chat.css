@@ -85,6 +85,11 @@
   background: #f7faf8;
 }
 
+.chat-conversation-row:focus-within .chat-edit-button,
+.chat-conversation-row:focus-within .chat-delete-button {
+  opacity: 1;
+}
+
 .chat-conversation-row.chat-conversation-active {
   border-color: #dcefe4;
   background: #eff8f2;
@@ -136,6 +141,31 @@
   transition: background .16s, color .16s, opacity .16s;
 }
 
+.chat-edit-button {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+  place-items: center;
+  margin-right: 2px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #829087;
+  opacity: 0;
+  transition: background .16s, color .16s, opacity .16s;
+}
+
+.chat-conversation-row:hover .chat-edit-button,
+.chat-edit-button:focus-visible {
+  opacity: 1;
+}
+
+.chat-edit-button:hover {
+  background: #eaf5ee;
+  color: #28714e;
+}
+
 .chat-conversation-row:hover .chat-delete-button,
 .chat-delete-button:focus-visible {
   opacity: 1;
@@ -144,6 +174,44 @@
 .chat-delete-button:hover {
   background: #fff0ef;
   color: #bd4c42;
+}
+
+.chat-conversation-edit-form {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+}
+
+.chat-conversation-edit-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 6px;
+  border: 1px solid #bdddc9;
+  border-radius: 7px;
+  outline: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+}
+
+.chat-edit-action {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #55816a;
+}
+
+.chat-edit-action:hover {
+  background: #eaf5ee;
+  color: #176f50;
 }
 
 .chat-history-state {
@@ -690,6 +758,10 @@
   }
 
   .chat-delete-button {
+    opacity: 1;
+  }
+
+  .chat-edit-button {
     opacity: 1;
   }
 

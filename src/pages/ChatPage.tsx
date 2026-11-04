@@ -1,4 +1,4 @@
-import { LoaderCircle, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
+import { Check, LoaderCircle, MessageSquare, Pencil, Plus, Send, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ChatMessage as ChatMessageView, MascotAvatar } from "../components/ChatMessage";
 import { ConfirmDialog } from "../components/ConfirmDialog";
@@ -8,6 +8,7 @@ import {
   listChatConversations,
   loadChatMessages,
   sendChatMessage,
+  updateChatConversationTitle,
   type ChatConversation,
   type ChatMessage,
 } from "../services/chat";
@@ -28,6 +29,8 @@ export function ChatPage({ userId }: { userId: string }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [conversationToDelete, setConversationToDelete] = useState<ChatConversation | null>(null);
+  const [editingConversationId, setEditingConversationId] = useState<string | null>(null);
+  const [conversationTitleDraft, setConversationTitleDraft] = useState("");
   const messagesRef = useRef<HTMLDivElement>(null);
   const historyRequestId = useRef(0);
   const sendingRef = useRef(false);
@@ -90,6 +93,39 @@ export function ChatPage({ userId }: { userId: string }) {
     if (!sending) setConversationToDelete(conversation);
   }
 
+  function beginEditConversation(conversation: ChatConversation) {
+    setEditingConversationId(conversation.id);
+    setConversationTitleDraft(conversation.title);
+    setError("");
+  }
+
+  function cancelEditConversation() {
+    setEditingConversationId(null);
+    setConversationTitleDraft("");
+  }
+
+  async function saveConversationTitle(event: FormEvent<HTMLFormElement>, conversation: ChatConversation) {
+    event.preventDefault();
+    const title = conversationTitleDraft.trim();
+    if (!title) {
+      setError("O nome da conversa não pode ficar vazio.");
+      return;
+    }
+    if (Array.from(title).length > 80) {
+      setError("O nome da conversa deve ter no máximo 80 caracteres.");
+      return;
+    }
+    setError("");
+    try {
+      const updated = await updateChatConversationTitle(conversation.id, title);
+      setConversations((current) => [updated, ...current.filter((item) => item.id !== updated.id)]
+        .sort((left, right) => right.updated_at.localeCompare(left.updated_at)));
+      cancelEditConversation();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível renomear a conversa.");
+    }
+  }
+
   async function confirmRemoveConversation() {
     const conversation = conversationToDelete;
     if (!conversation || sending) return;
@@ -116,6 +152,19 @@ export function ChatPage({ userId }: { userId: string }) {
       setError("Sua mensagem deve ter no máximo 2.000 caracteres.");
       return;
     }
+    const now = new Date().toISOString();
+    const optimisticConversationId = conversationId ?? `pending-${Date.now()}`;
+    setMessages((current) => [
+      ...current,
+      {
+        id: `user-${Date.now()}-${current.length}`,
+        conversation_id: optimisticConversationId,
+        role: "user",
+        content: message,
+        created_at: now,
+      },
+    ]);
+    setDraft("");
     sendingRef.current = true;
     setSending(true);
     setError("");
@@ -127,17 +176,10 @@ export function ChatPage({ userId }: { userId: string }) {
         setConversationId(created.id);
         setConversations((current) => [created, ...current]);
       }
+      if (!activeConversationId) throw new Error("Não foi possível iniciar esta conversa.");
       const reply = await sendChatMessage(activeConversationId, message);
-      const now = new Date().toISOString();
       setMessages((current) => [
         ...current,
-        {
-          id: `user-${now}`,
-          conversation_id: activeConversationId,
-          role: "user",
-          content: message,
-          created_at: now,
-        },
         {
           id: `assistant-${now}`,
           conversation_id: activeConversationId,
@@ -182,24 +224,63 @@ export function ChatPage({ userId }: { userId: string }) {
               {conversations.map((conversation) => (
                 <li key={conversation.id}>
                   <div className={`chat-conversation-row ${conversationId === conversation.id ? "chat-conversation-active" : ""}`}>
-                    <button
-                      className="chat-conversation"
-                      type="button"
-                      onClick={() => void openConversation(conversation.id)}
-                      disabled={sending}
-                    >
-                      <MessageSquare size={15} />
-                      <span>{conversation.title}</span>
-                    </button>
-                  <button
-                    aria-label={`Excluir conversa ${conversation.title}`}
-                    className="chat-delete-button"
-                    type="button"
-                    onClick={() => removeConversation(conversation)}
-                    disabled={sending}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                    {editingConversationId === conversation.id ? (
+                      <form
+                        className="chat-conversation-edit-form"
+                        onSubmit={(event) => void saveConversationTitle(event, conversation)}
+                      >
+                        <label className="visually-hidden" htmlFor={`conversation-title-${conversation.id}`}>
+                          Editar nome da conversa
+                        </label>
+                        <input
+                          id={`conversation-title-${conversation.id}`}
+                          aria-label={`Editar nome da conversa ${conversation.title}`}
+                          maxLength={80}
+                          autoFocus
+                          value={conversationTitleDraft}
+                          onChange={(event) => setConversationTitleDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") cancelEditConversation();
+                          }}
+                        />
+                        <button className="chat-edit-action" type="submit" aria-label="Salvar nome da conversa">
+                          <Check size={14} />
+                        </button>
+                        <button className="chat-edit-action" type="button" onClick={cancelEditConversation} aria-label="Cancelar edição do nome">
+                          <X size={14} />
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <button
+                          className="chat-conversation"
+                          type="button"
+                          onClick={() => void openConversation(conversation.id)}
+                          disabled={sending}
+                        >
+                          <MessageSquare size={15} />
+                          <span>{conversation.title}</span>
+                        </button>
+                        <button
+                          aria-label={`Editar nome da conversa ${conversation.title}`}
+                          className="chat-edit-button"
+                          type="button"
+                          onClick={() => beginEditConversation(conversation)}
+                          disabled={sending}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          aria-label={`Excluir conversa ${conversation.title}`}
+                          className="chat-delete-button"
+                          type="button"
+                          onClick={() => removeConversation(conversation)}
+                          disabled={sending}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </li>
               ))}

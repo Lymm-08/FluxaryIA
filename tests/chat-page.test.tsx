@@ -11,6 +11,7 @@ const chatServices = vi.hoisted(() => ({
   createChatConversation: vi.fn(),
   deleteChatConversation: vi.fn(),
   sendChatMessage: vi.fn(),
+  updateChatConversationTitle: vi.fn(),
 }));
 
 vi.mock("../src/services/chat", () => ({
@@ -42,6 +43,12 @@ describe("Chat Fluxary", () => {
     chatServices.createChatConversation.mockResolvedValue(conversation);
     chatServices.deleteChatConversation.mockResolvedValue(undefined);
     chatServices.sendChatMessage.mockResolvedValue("Resposta do assistente.");
+    chatServices.updateChatConversationTitle.mockImplementation(async (id: string, title: string) => ({
+      ...conversation,
+      id,
+      title,
+      updated_at: "2026-11-04T10:02:00.000Z",
+    }));
   });
 
   it("uses the official mascot and formats structured assistant messages", () => {
@@ -72,6 +79,48 @@ describe("Chat Fluxary", () => {
       expect(chatServices.sendChatMessage).toHaveBeenCalledWith(conversation.id, "Como economizar?");
     });
     expect(await screen.findByText("Resposta do assistente.")).toBeTruthy();
+  });
+
+  it("shows the user's message immediately while the assistant is responding", async () => {
+    const user = userEvent.setup();
+    let resolveReply: (reply: string) => void = () => undefined;
+    chatServices.sendChatMessage.mockImplementationOnce(() => new Promise<string>((resolve) => {
+      resolveReply = resolve;
+    }));
+    render(<ChatPage userId="user-1" />);
+
+    await user.click(await screen.findByRole("button", { name: "Meu orçamento" }));
+    await screen.findByText("R$ 200");
+    const composer = screen.getByRole("textbox", { name: "Digite sua pergunta" });
+    await user.type(composer, "Qual meu saldo?");
+    fireEvent.keyDown(composer, { key: "Enter", code: "Enter" });
+
+    expect(await screen.findByText("Qual meu saldo?")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Assistente Fluxary está escrevendo");
+    expect((composer as HTMLTextAreaElement).value).toBe("");
+    expect(screen.queryByText("Resposta do assistente.")).toBeNull();
+
+    resolveReply("Seu saldo está atualizado.");
+    expect(await screen.findByText("Seu saldo está atualizado.")).toBeTruthy();
+  });
+
+  it("allows renaming a conversation and saves the updated title", async () => {
+    const user = userEvent.setup();
+    render(<ChatPage userId="user-1" />);
+
+    await user.click(await screen.findByRole("button", { name: "Editar nome da conversa Meu orçamento" }));
+    const titleInput = screen.getByRole("textbox", { name: "Editar nome da conversa Meu orçamento" });
+    await user.clear(titleInput);
+    await user.type(titleInput, "Planejamento anual");
+    await user.click(screen.getByRole("button", { name: "Salvar nome da conversa" }));
+
+    await waitFor(() => {
+      expect(chatServices.updateChatConversationTitle).toHaveBeenCalledWith(
+        conversation.id,
+        "Planejamento anual",
+      );
+    });
+    expect(await screen.findByRole("button", { name: "Planejamento anual" })).toBeTruthy();
   });
 
   it("shows loading failures instead of hiding them", async () => {

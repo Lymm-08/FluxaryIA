@@ -51,6 +51,20 @@ export async function createChatConversation(userId: string, title: string): Pro
   return data;
 }
 
+export async function updateChatConversationTitle(
+  conversationId: string,
+  title: string,
+): Promise<ChatConversation> {
+  const { data, error } = await getClient()
+    .from("ai_conversations")
+    .update({ title, updated_at: new Date().toISOString() })
+    .eq("id", conversationId)
+    .select("id,title,created_at,updated_at")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteChatConversation(conversationId: string): Promise<void> {
   const { error } = await getClient()
     .from("ai_conversations")
