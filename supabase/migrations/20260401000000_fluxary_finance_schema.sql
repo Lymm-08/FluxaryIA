@@ -1,272 +1,480 @@
--- Migração: estrutura financeira principal do Fluxary.
--- Seção: perfis e preferências da conta.
--- Tabela: Perfis dos usuários (profiles).
-create table if not exists public.profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
-  email text not null default '',
-  display_name text not null default '',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+BEGIN;
+
+-- =====================================================
+-- 1. PERFIS E CONFIGURAÇÕES
+-- =====================================================
+
+CREATE TABLE public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL DEFAULT '',
+    display_name TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Tabela: Preferências pessoais e da tela inicial (user_settings).
-create table if not exists public.user_settings (
-  user_id uuid primary key references auth.users (id) on delete cascade,
-  monthly_budget numeric(14, 2) null check (monthly_budget is null or monthly_budget > 0),
-  dark_mode boolean not null default false,
-  dashboard_widgets jsonb not null default '["cards", "goals"]'::jsonb
-    check (
-      jsonb_typeof(dashboard_widgets) = 'array'
-      and dashboard_widgets <@ '["cards", "goals"]'::jsonb
-    ),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+CREATE TABLE public.user_settings (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    monthly_budget NUMERIC(14,2)
+        CHECK (monthly_budget IS NULL OR monthly_budget > 0),
+    dark_mode BOOLEAN NOT NULL DEFAULT FALSE,
+    dashboard_widgets JSONB NOT NULL DEFAULT '["cards", "goals"]'::jsonb
+        CHECK (
+            jsonb_typeof(dashboard_widgets) = 'array'
+            AND dashboard_widgets <@ '["cards", "goals"]'::jsonb
+        ),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Seção: movimentações, categorias, contas e cartões.
--- Tabela: Lançamentos financeiros do usuário (transactions).
--- IDs em texto preservam também as categorias iniciais já usadas pelo app.
-create table if not exists public.transactions (
-  id text not null,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  description text not null,
-  category text not null,
-  category_id text null,
-  transaction_date date not null,
-  amount numeric(14, 2) not null check (amount > 0),
-  type text not null check (type in ('income', 'expense')),
-  is_settled boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, id)
+-- =====================================================
+-- 2. CATEGORIAS
+-- =====================================================
+
+CREATE TABLE public.categories (
+    id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (LENGTH(TRIM(name)) > 0),
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    color TEXT NOT NULL CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
+    emoji TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, id),
+    UNIQUE (user_id, type, name)
 );
 
--- Tabela: Categorias de receitas e despesas (categories).
-create table if not exists public.categories (
-  id text not null,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  name text not null,
-  type text not null check (type in ('income', 'expense')),
-  color text not null check (color ~ '^#[0-9A-Fa-f]{6}$'),
-  emoji text not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, id),
-  unique (user_id, type, name)
+-- =====================================================
+-- 3. CONTAS
+-- =====================================================
+
+CREATE TABLE public.accounts (
+    id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (LENGTH(TRIM(name)) > 0),
+    institution TEXT NOT NULL DEFAULT '',
+    bank_id TEXT NOT NULL DEFAULT '',
+    balance NUMERIC(14,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, id)
 );
 
--- Tabela: Contas financeiras do usuário (accounts).
-create table if not exists public.accounts (
-  id text not null,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  name text not null,
-  institution text not null,
-  bank_id text not null default '',
-  balance numeric(14, 2) not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, id)
+-- =====================================================
+-- 4. CARTÕES DE CRÉDITO
+-- =====================================================
+
+CREATE TABLE public.credit_cards (
+    id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (LENGTH(TRIM(name)) > 0),
+    issuer TEXT NOT NULL DEFAULT '',
+    bank_id TEXT NOT NULL DEFAULT '',
+    last_four TEXT NOT NULL DEFAULT ''
+        CHECK (last_four = '' OR last_four ~ '^[0-9]{4}$'),
+    credit_limit NUMERIC(14,2) NOT NULL CHECK (credit_limit > 0),
+    closing_day INTEGER NOT NULL DEFAULT 10
+        CHECK (closing_day BETWEEN 1 AND 31),
+    due_day INTEGER NOT NULL DEFAULT 17
+        CHECK (due_day BETWEEN 1 AND 31),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, id)
 );
 
--- Tabela: Cartões de crédito cadastrados (credit_cards).
-create table if not exists public.credit_cards (
-  id text not null,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  name text not null,
-  issuer text not null,
-  bank_id text not null default '',
-  last_four text not null default '',
-  credit_limit numeric(14, 2) not null check (credit_limit > 0),
-  closing_day integer not null check (closing_day between 1 and 31),
-  due_day integer not null check (due_day between 1 and 31),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, id)
+-- =====================================================
+-- 5. BANCOS PERSONALIZADOS
+-- =====================================================
+
+CREATE TABLE public.custom_banks (
+    id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (LENGTH(TRIM(name)) > 0),
+    emoji TEXT NOT NULL,
+    color TEXT NOT NULL CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, id),
+    UNIQUE (user_id, name)
 );
 
--- Seção: metadados de compras no cartão e parcelamentos.
-alter table public.transactions
-  add column if not exists credit_card_id text null,
-  add column if not exists credit_card_kind text null,
-  add column if not exists installment_group_id text null,
-  add column if not exists installment_number smallint null,
-  add column if not exists installment_count smallint null;
+-- =====================================================
+-- 6. ORÇAMENTOS
+-- =====================================================
 
-alter table public.transactions
-  drop constraint if exists transactions_credit_card_kind_check,
-  add constraint transactions_credit_card_kind_check
-    check (credit_card_kind is null or credit_card_kind in ('purchase', 'payment')),
-  drop constraint if exists transactions_installment_position_check,
-  add constraint transactions_installment_position_check
-    check (
-      (installment_number is null and installment_count is null)
-      or (
-        installment_number between 1 and 24
-        and installment_count between 1 and 24
-        and installment_number <= installment_count
-      )
-    ),
-  drop constraint if exists transactions_card_metadata_check,
-  add constraint transactions_card_metadata_check
-    check (
-      (credit_card_id is null and credit_card_kind is null)
-      or (credit_card_id is not null and credit_card_kind is not null)
-    ),
-  drop constraint if exists transactions_credit_card_user_fkey,
-  add constraint transactions_credit_card_user_fkey
-    foreign key (user_id, credit_card_id)
-    references public.credit_cards (user_id, id)
-    on delete restrict,
-  drop constraint if exists transactions_category_user_fkey,
-  add constraint transactions_category_user_fkey
-    foreign key (user_id, category_id)
-    references public.categories (user_id, id)
-    on delete set null (category_id);
-
-create index if not exists transactions_user_credit_card_idx
-  on public.transactions (user_id, credit_card_id, transaction_date desc)
-  where credit_card_id is not null;
-
-create index if not exists transactions_installment_group_idx
-  on public.transactions (user_id, installment_group_id)
-  where installment_group_id is not null;
-
--- Seção: bancos personalizados, orçamentos e metas.
--- Tabela: Instituições financeiras personalizadas (custom_banks).
-create table if not exists public.custom_banks (
-  id text not null,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  name text not null,
-  emoji text not null,
-  color text not null check (color ~ '^#[0-9A-Fa-f]{6}$'),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, id),
-  unique (user_id, name)
+CREATE TABLE public.budgets (
+    id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    category_id TEXT,
+    monthly_limit NUMERIC(14,2) NOT NULL CHECK (monthly_limit > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, id),
+    UNIQUE (user_id, category),
+    CONSTRAINT budgets_category_user_fkey
+        FOREIGN KEY (user_id, category_id)
+        REFERENCES public.categories(user_id, id)
+        ON DELETE RESTRICT
 );
 
--- Tabela: Limites mensais por categoria (budgets).
-create table if not exists public.budgets (
-  id text not null,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  category text not null,
-  category_id text null,
-  monthly_limit numeric(14, 2) not null check (monthly_limit > 0),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, id),
-  unique (user_id, category),
-  constraint budgets_category_user_fkey
-    foreign key (user_id, category_id)
-    references public.categories (user_id, id)
-    on delete set null (category_id)
+-- =====================================================
+-- 7. METAS FINANCEIRAS
+-- =====================================================
+
+CREATE TABLE public.financial_goals (
+    id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (LENGTH(TRIM(name)) > 0),
+    target NUMERIC(14,2) NOT NULL CHECK (target > 0),
+    saved NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (saved >= 0),
+    deadline DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, id)
 );
 
--- Tabela: Metas financeiras e valores acumulados (financial_goals).
-create table if not exists public.financial_goals (
-  id text not null,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  name text not null,
-  target numeric(14, 2) not null check (target > 0),
-  saved numeric(14, 2) not null default 0 check (saved >= 0),
-  deadline date null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  primary key (user_id, id)
+-- =====================================================
+-- 8. MOVIMENTAÇÕES
+-- =====================================================
+
+CREATE TABLE public.transactions (
+    id TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    description TEXT NOT NULL CHECK (LENGTH(TRIM(description)) > 0),
+    category TEXT NOT NULL,
+    category_id TEXT,
+    account_id TEXT,
+    transaction_date DATE NOT NULL,
+    amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    credit_card_id TEXT,
+    credit_card_kind TEXT
+        CHECK (
+            credit_card_kind IS NULL
+            OR credit_card_kind IN ('purchase', 'payment')
+        ),
+    installment_group_id TEXT,
+    installment_number SMALLINT,
+    installment_count SMALLINT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (user_id, id),
+
+    CONSTRAINT transactions_installment_position_check
+        CHECK (
+            (installment_number IS NULL AND installment_count IS NULL)
+            OR (
+                installment_number BETWEEN 1 AND 24
+                AND installment_count BETWEEN 1 AND 24
+                AND installment_number <= installment_count
+            )
+        ),
+
+    CONSTRAINT transactions_card_metadata_check
+        CHECK (
+            (credit_card_id IS NULL AND credit_card_kind IS NULL)
+            OR
+            (credit_card_id IS NOT NULL AND credit_card_kind IS NOT NULL)
+        ),
+
+    CONSTRAINT transactions_credit_card_user_fkey
+        FOREIGN KEY (user_id, credit_card_id)
+        REFERENCES public.credit_cards(user_id, id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT transactions_category_user_fkey
+        FOREIGN KEY (user_id, category_id)
+        REFERENCES public.categories(user_id, id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT transactions_account_user_fkey
+        FOREIGN KEY (user_id, account_id)
+        REFERENCES public.accounts(user_id, id)
+        ON DELETE RESTRICT
 );
 
--- Seção: índices, permissões e automações de manutenção.
-create index if not exists transactions_user_date_idx on public.transactions (user_id, transaction_date desc);
-create index if not exists categories_user_type_idx on public.categories (user_id, type);
-create index if not exists budgets_user_category_idx on public.budgets (user_id, category);
-create index if not exists transactions_user_category_idx on public.transactions (user_id, category_id) where category_id is not null;
-create index if not exists budgets_user_category_id_idx on public.budgets (user_id, category_id) where category_id is not null;
+-- =====================================================
+-- 9. ÍNDICES
+-- =====================================================
 
-grant usage on schema public to authenticated;
-grant select, insert, update, delete on public.profiles, public.user_settings, public.transactions,
-  public.categories, public.accounts, public.credit_cards, public.custom_banks, public.budgets,
-  public.financial_goals to authenticated;
+CREATE INDEX categories_user_type_idx
+    ON public.categories(user_id, type);
 
--- Função: atualiza automaticamente a data de alteração dos registros.
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
+CREATE INDEX transactions_user_date_idx
+    ON public.transactions(user_id, transaction_date DESC);
+
+CREATE INDEX transactions_user_card_idx
+    ON public.transactions(user_id, credit_card_id)
+    WHERE credit_card_id IS NOT NULL;
+
+CREATE INDEX transactions_installment_group_idx
+    ON public.transactions(user_id, installment_group_id)
+    WHERE installment_group_id IS NOT NULL;
+
+CREATE INDEX transactions_user_category_idx
+    ON public.transactions(user_id, category_id)
+    WHERE category_id IS NOT NULL;
+
+CREATE INDEX transactions_user_account_idx
+    ON public.transactions(user_id, account_id)
+    WHERE account_id IS NOT NULL;
+
+CREATE INDEX budgets_user_category_idx
+    ON public.budgets(user_id, category_id)
+    WHERE category_id IS NOT NULL;
+
+-- =====================================================
+-- 10. FUNÇÃO DE ATUALIZAÇÃO DE DATA
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+    NEW.updated_at := NOW();
+    RETURN NEW;
+END;
 $$;
 
--- Função: cria o perfil e as preferências após o cadastro de uma conta.
-create or replace function public.create_fluxary_user_records()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  insert into public.profiles (id, email, display_name)
-  values (
-    new.id,
-    coalesce(new.email, ''),
-    coalesce(new.raw_user_meta_data ->> 'full_name', '')
-  )
-  on conflict (id) do update
-  set email = excluded.email, display_name = excluded.display_name;
+-- =====================================================
+-- 11. CRIAÇÃO AUTOMÁTICA DE PERFIL E CONFIGURAÇÕES
+-- =====================================================
 
-  insert into public.user_settings (user_id)
-  values (new.id)
-  on conflict (user_id) do nothing;
-  return new;
-end;
-$$;
+CREATE OR REPLACE FUNCTION public.sync_fluxary_user_records()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_email TEXT;
+    v_name TEXT;
+BEGIN
+    v_email := COALESCE(NEW.email, '');
 
-drop trigger if exists auth_user_created_fluxary_records on auth.users;
-create trigger auth_user_created_fluxary_records
-  after insert on auth.users
-  for each row execute function public.create_fluxary_user_records();
-
--- Seção: gatilhos, proteção RLS e políticas por proprietário.
-do $$
-declare
-  table_name text;
-begin
-  foreach table_name in array array[
-    'profiles', 'user_settings', 'transactions', 'categories', 'accounts',
-    'credit_cards', 'custom_banks', 'budgets', 'financial_goals'
-  ] loop
-    execute format('drop trigger if exists set_updated_at on public.%I', table_name);
-    execute format(
-      'create trigger set_updated_at before update on public.%I for each row execute function public.set_updated_at()',
-      table_name
+    v_name := COALESCE(
+        NULLIF(NEW.raw_user_meta_data ->> 'full_name', ''),
+        NULLIF(NEW.raw_user_meta_data ->> 'name', ''),
+        ''
     );
-    execute format('alter table public.%I enable row level security', table_name);
-  end loop;
-end;
+
+    INSERT INTO public.profiles (id, email, display_name)
+    VALUES (NEW.id, v_email, v_name)
+    ON CONFLICT (id) DO UPDATE
+    SET email = EXCLUDED.email,
+        display_name = CASE
+            WHEN EXCLUDED.display_name <> ''
+            THEN EXCLUDED.display_name
+            ELSE public.profiles.display_name
+        END;
+
+    INSERT INTO public.user_settings (user_id)
+    VALUES (NEW.id)
+    ON CONFLICT (user_id) DO NOTHING;
+
+    RETURN NEW;
+END;
 $$;
 
-drop policy if exists "Users can manage their own profile" on public.profiles;
-create policy "Users can manage their own profile" on public.profiles
-  for all to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+CREATE TRIGGER auth_user_created_fluxary_records
+AFTER INSERT ON auth.users
+FOR EACH ROW
+EXECUTE FUNCTION public.sync_fluxary_user_records();
 
-drop policy if exists "Users can manage their own settings" on public.user_settings;
-create policy "Users can manage their own settings" on public.user_settings
-  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+CREATE TRIGGER auth_user_email_updated_fluxary
+AFTER UPDATE OF email ON auth.users
+FOR EACH ROW
+WHEN (OLD.email IS DISTINCT FROM NEW.email)
+EXECUTE FUNCTION public.sync_fluxary_user_records();
 
-do $$
-declare
-  table_name text;
-begin
-  foreach table_name in array array[
-    'transactions', 'categories', 'accounts', 'credit_cards',
-    'custom_banks', 'budgets', 'financial_goals'
-  ] loop
-    execute format('drop policy if exists "Users can manage their own rows" on public.%I', table_name);
-    execute format(
-      'create policy "Users can manage their own rows" on public.%I for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id)',
-      table_name
-    );
-  end loop;
-end;
-$$;
+-- =====================================================
+-- 12. TRIGGERS DE ATUALIZAÇÃO
+-- =====================================================
+
+CREATE TRIGGER profiles_updated_at
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER settings_updated_at
+BEFORE UPDATE ON public.user_settings
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER categories_updated_at
+BEFORE UPDATE ON public.categories
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER accounts_updated_at
+BEFORE UPDATE ON public.accounts
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER credit_cards_updated_at
+BEFORE UPDATE ON public.credit_cards
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER custom_banks_updated_at
+BEFORE UPDATE ON public.custom_banks
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER budgets_updated_at
+BEFORE UPDATE ON public.budgets
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER goals_updated_at
+BEFORE UPDATE ON public.financial_goals
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER transactions_updated_at
+BEFORE UPDATE ON public.transactions
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- =====================================================
+-- 13. PERFIS DE USUÁRIOS JÁ EXISTENTES
+-- =====================================================
+
+INSERT INTO public.profiles (id, email, display_name)
+SELECT
+    id,
+    COALESCE(email, ''),
+    COALESCE(
+        NULLIF(raw_user_meta_data ->> 'full_name', ''),
+        NULLIF(raw_user_meta_data ->> 'name', ''),
+        ''
+    )
+FROM auth.users
+ON CONFLICT (id) DO UPDATE
+SET email = EXCLUDED.email;
+
+INSERT INTO public.user_settings (user_id)
+SELECT id FROM auth.users
+ON CONFLICT (user_id) DO NOTHING;
+
+-- =====================================================
+-- 14. HABILITAÇÃO EXPLÍCITA DE RLS
+-- =====================================================
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.credit_cards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.custom_banks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.financial_goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+
+-- =====================================================
+-- 15. PERMISSÕES
+-- =====================================================
+
+REVOKE ALL ON public.profiles, public.user_settings,
+    public.categories, public.accounts, public.credit_cards,
+    public.custom_banks, public.budgets, public.financial_goals,
+    public.transactions
+FROM PUBLIC, anon;
+
+GRANT USAGE ON SCHEMA public TO authenticated;
+
+GRANT SELECT ON public.profiles TO authenticated;
+GRANT UPDATE (display_name) ON public.profiles TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON public.user_settings, public.categories, public.accounts,
+   public.credit_cards, public.custom_banks, public.budgets,
+   public.financial_goals, public.transactions
+TO authenticated;
+
+REVOKE ALL ON FUNCTION public.sync_fluxary_user_records()
+FROM PUBLIC, anon, authenticated;
+
+REVOKE ALL ON FUNCTION public.set_updated_at()
+FROM PUBLIC, anon, authenticated;
+
+-- =====================================================
+-- 16. POLÍTICAS DE SEGURANÇA
+-- =====================================================
+
+CREATE POLICY profiles_select_own
+ON public.profiles
+FOR SELECT TO authenticated
+USING ((SELECT auth.uid()) = id);
+
+CREATE POLICY profiles_update_own
+ON public.profiles
+FOR UPDATE TO authenticated
+USING ((SELECT auth.uid()) = id)
+WITH CHECK ((SELECT auth.uid()) = id);
+
+CREATE POLICY settings_manage_own
+ON public.user_settings
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY categories_manage_own
+ON public.categories
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY accounts_manage_own
+ON public.accounts
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY cards_manage_own
+ON public.credit_cards
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY banks_manage_own
+ON public.custom_banks
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY budgets_manage_own
+ON public.budgets
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY goals_manage_own
+ON public.financial_goals
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY transactions_manage_own
+ON public.transactions
+FOR ALL TO authenticated
+USING ((SELECT auth.uid()) = user_id)
+WITH CHECK ((SELECT auth.uid()) = user_id);
+
+COMMIT;
+
+-- =====================================================
+-- 17. CONFERÊNCIA DA SEGURANÇA
+-- =====================================================
+
+SELECT
+    tablename,
+    rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
+AND tablename IN (
+    'profiles',
+    'user_settings',
+    'categories',
+    'accounts',
+    'credit_cards',
+    'custom_banks',
+    'budgets',
+    'financial_goals',
+    'transactions'
+)
+ORDER BY tablename;
