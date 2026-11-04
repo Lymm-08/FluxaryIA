@@ -81,6 +81,29 @@ describe("Chat Fluxary", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Falha ao carregar o histórico.");
   });
 
+  it("uses the Fluxary confirmation dialog before deleting a conversation", async () => {
+    const user = userEvent.setup();
+    render(<ChatPage userId="user-1" />);
+
+    await user.click(await screen.findByRole("button", { name: "Excluir conversa Meu orçamento" }));
+
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    expect(screen.getByText("Essa ação não pode ser desfeita. As mensagens desta conversa também serão removidas.")).toBeTruthy();
+    expect(chatServices.deleteChatConversation).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(chatServices.deleteChatConversation).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Excluir conversa Meu orçamento" }));
+    await user.click(screen.getByRole("button", { name: "Excluir conversa", exact: true }));
+
+    await waitFor(() => {
+      expect(chatServices.deleteChatConversation).toHaveBeenCalledWith(conversation.id);
+    });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Excluir conversa Meu orçamento" })).toBeNull());
+  });
+
   it("preserves question suggestions and offers a new conversation", async () => {
     const user = userEvent.setup();
     render(<ChatPage userId="user-1" />);

@@ -31,15 +31,24 @@ class AIProviderConfig:
 
 
 class AIProviderError(Exception):
-    def __init__(self, provider: str, stage: str, status: int | None):
+    def __init__(
+        self,
+        provider: str,
+        stage: str,
+        status: int | None,
+        diagnostic: str = "upstream_error",
+    ):
         super().__init__(f"{provider} provider failed during {stage}")
         self.provider = provider
         self.stage = stage
         self.upstream_status = status
+        self.diagnostic = diagnostic
 
     @property
     def status(self) -> int:
         if self.stage in ("provider_selection", "provider_configuration"):
+            return 503
+        if self.diagnostic in ("rate_limited", "timeout", "upstream_unavailable"):
             return 503
         if self.upstream_status == 429 or (
             self.upstream_status is not None and self.upstream_status >= 500
@@ -51,8 +60,18 @@ class AIProviderError(Exception):
     def message(self) -> str:
         if self.stage in ("provider_selection", "provider_configuration"):
             return "O provedor de IA não está configurado corretamente. Verifique as variáveis do backend."
-        if self.upstream_status == 429:
+        if self.diagnostic == "rate_limited":
             return "O limite temporário da IA foi atingido. Aguarde um pouco e tente novamente."
+        if self.diagnostic == "authentication_or_permission":
+            return "O Gemini não autorizou a chave configurada. Revise GEMINI_API_KEY no ambiente do backend."
+        if self.diagnostic == "model_unavailable":
+            return "O modelo Gemini configurado não está disponível para este projeto. Revise GEMINI_MODEL."
+        if self.diagnostic == "invalid_request":
+            return "O provedor recusou a solicitação. Revise a configuração do modelo Gemini."
+        if self.diagnostic == "timeout":
+            return "O Gemini demorou para responder. Tente novamente em instantes."
+        if self.diagnostic == "upstream_unavailable":
+            return "O Gemini está temporariamente indisponível. Tente novamente em instantes."
         return "Não foi possível gerar uma resposta agora. Tente novamente em instantes."
 
 
@@ -100,6 +119,32 @@ def build_gemini_contents(history: list[dict[str, str]], latest: str) -> list[di
     return contents
 
 
+def classify_provider_error(status: int | None, error_type: str, message: str = "") -> str:
+    normalized = message.lower()
+    if status == 429 or any(
+        term in normalized
+        for term in ("rate limit", "quota", "resource_exhausted", "too many requests")
+    ):
+        return "rate_limited"
+    if status in (401, 403) or any(
+        term in normalized
+        for term in ("api key", "api_key", "permission denied", "unauthorized")
+    ):
+        return "authentication_or_permission"
+    if status == 404 or (
+        "model" in normalized
+        and any(term in normalized for term in ("not found", "unavailable", "does not exist"))
+    ):
+        return "model_unavailable"
+    if "timeout" in error_type.lower() or "timed out" in normalized:
+        return "timeout"
+    if status == 400:
+        return "invalid_request"
+    if status is not None and status >= 500:
+        return "upstream_unavailable"
+    return "upstream_error"
+
+
 # Chamadas isoladas aos provedores configuráveis.
 def _gemini_reply(config: AIProviderConfig, history: list[dict[str, str]], latest: str) -> str:
     client = None
@@ -129,12 +174,18 @@ def _gemini_reply(config: AIProviderConfig, history: list[dict[str, str]], lates
             status = getattr(error, "status_code", None)
         if not isinstance(status, int):
             status = None
-        logger.warning(
-            "chat_provider_error provider=gemini stage=generate_content error_type=%s upstream_status=%s",
-            type(error).__name__,
+        diagnostic = classify_provider_error(
             status,
+            type(error).__name__,
+            str(getattr(error, "message", "")),
         )
-        raise AIProviderError("gemini", "generate_content", status) from error
+        logger.warning(
+            "chat_provider_error provider=gemini stage=generate_content error_type=%s upstream_status=%s upstream_message=%s",
+            type(error).__name__,
+            status if status is not None else "unknown",
+            diagnostic,
+        )
+        raise AIProviderError("gemini", "generate_content", status, diagnostic) from error
     finally:
         if client is not None:
             try:

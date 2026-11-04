@@ -10,7 +10,12 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from api.ai_provider import AIProviderError, generate_reply, get_provider_config
+from api.ai_provider import (
+    AIProviderError,
+    classify_provider_error,
+    generate_reply,
+    get_provider_config,
+)
 
 
 MAX_BODY_BYTES = 8_192
@@ -18,6 +23,7 @@ MAX_MESSAGE_LENGTH = 2_000
 MAX_TRANSACTIONS = 1_500
 MAX_HISTORY_MESSAGES = 10
 logger = logging.getLogger(__name__)
+SAFE_ERROR_CODE_PATTERN = re.compile(r"^(?:PGRST\d{3}|[0-9A-Z]{5})$")
 CONVERSATION_ID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
     re.IGNORECASE,
@@ -41,6 +47,23 @@ def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict[s
     handler.wfile.write(encoded)
 
 
+def _http_error_diagnostics(error: HTTPError) -> tuple[str, str]:
+    try:
+        body = error.read(4_096)
+        payload = json.loads(body) if body else {}
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+    error_message = payload.get("message") or payload.get("error_description") or payload.get("error")
+    if not isinstance(error_message, str):
+        error_message = ""
+    error_code = payload.get("code")
+    safe_code = error_code if isinstance(error_code, str) and SAFE_ERROR_CODE_PATTERN.fullmatch(error_code) else "unknown"
+    diagnostic = classify_provider_error(error.code, "HTTPError", error_message)
+    return safe_code, diagnostic
+
+
 def _request_json(
     url: str,
     method: str,
@@ -54,19 +77,30 @@ def _request_json(
         with urlopen(request, timeout=12) as response:
             content = response.read()
     except HTTPError as error:
+        upstream_code, diagnostic = _http_error_diagnostics(error)
         logger.warning(
-            "chat_external_error stage=%s error_type=HTTPError upstream_status=%s",
+            "chat_external_error stage=%s error_type=HTTPError upstream_status=%s upstream_code=%s upstream_message=%s",
             stage,
             error.code,
+            upstream_code,
+            diagnostic,
         )
         if error.code == 401:
             raise ChatApiError(401, "Sua sessão expirou. Entre novamente para continuar.") from error
         if error.code == 429:
-            raise ChatApiError(503, "O assistente está ocupado. Tente novamente em instantes.") from error
+            raise ChatApiError(
+                503,
+                "O serviço de dados do chat está limitando solicitações. Aguarde um pouco e tente novamente.",
+            ) from error
+        if error.code >= 500:
+            raise ChatApiError(
+                503,
+                "O serviço de dados do chat está temporariamente indisponível. Tente novamente em instantes.",
+            ) from error
         raise ChatApiError(502, "Não foi possível concluir a solicitação com um serviço externo.") from error
     except (TimeoutError, URLError) as error:
         logger.warning(
-            "chat_external_error stage=%s error_type=%s upstream_status=unknown",
+            "chat_external_error stage=%s error_type=%s upstream_status=unknown upstream_message=timeout",
             stage,
             type(error).__name__,
         )
@@ -360,10 +394,11 @@ def _handle_chat(handler: BaseHTTPRequestHandler) -> None:
         reply = generate_reply(provider_config, history, message.strip(), summary)
     except AIProviderError as error:
         logger.warning(
-            "chat_provider_failure provider=%s stage=%s error_type=AIProviderError upstream_status=%s",
+            "chat_provider_failure provider=%s stage=%s error_type=AIProviderError upstream_status=%s upstream_message=%s",
             error.provider,
             error.stage,
             error.upstream_status if error.upstream_status is not None else "unknown",
+            error.diagnostic,
         )
         raise ChatApiError(error.status, error.message) from error
 

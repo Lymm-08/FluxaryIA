@@ -1,7 +1,18 @@
+import io
+import logging
 import unittest
 from datetime import date
+from unittest.mock import patch
+from urllib.error import HTTPError
 
-from api.chat import CONVERSATION_ID_PATTERN, _financial_summary, _month_keys
+from api.chat import (
+    CONVERSATION_ID_PATTERN,
+    ChatApiError,
+    _financial_summary,
+    _http_error_diagnostics,
+    _month_keys,
+    _request_json,
+)
 
 
 class ChatApiTests(unittest.TestCase):
@@ -41,6 +52,36 @@ class ChatApiTests(unittest.TestCase):
     def test_conversation_id_requires_uuid_format(self):
         self.assertTrue(CONVERSATION_ID_PATTERN.fullmatch("d9428888-122b-4e31-b6c1-5a8b7b3f2a10"))
         self.assertFalse(CONVERSATION_ID_PATTERN.fullmatch("not-a-uuid"))
+
+    def test_supabase_rate_limit_is_identified_without_logging_response_body(self):
+        body = b'{"code":"PGRST000","message":"quota exceeded for account secret-key 12345"}'
+        error = HTTPError("https://example.invalid", 429, "Too Many Requests", {}, io.BytesIO(body))
+
+        with self.assertLogs("api.chat", level=logging.WARNING) as captured:
+            with self.assertRaises(ChatApiError) as raised:
+                with patch("api.chat.urlopen", side_effect=error):
+                    _request_json(
+                        "https://example.invalid",
+                        "GET",
+                        {},
+                        stage="supabase_chat_history",
+                    )
+
+        log_output = "\n".join(captured.output)
+        self.assertEqual(raised.exception.status, 503)
+        self.assertIn("serviço de dados", raised.exception.message)
+        self.assertIn("stage=supabase_chat_history", log_output)
+        self.assertIn("upstream_status=429", log_output)
+        self.assertIn("upstream_code=PGRST000", log_output)
+        self.assertIn("upstream_message=rate_limited", log_output)
+        self.assertNotIn("secret-key", log_output)
+        self.assertNotIn("12345", log_output)
+
+    def test_http_diagnostics_only_return_allowlisted_code_and_category(self):
+        body = b'{"code":"bad code with secret","message":"sensitive user content"}'
+        error = HTTPError("https://example.invalid", 400, "Bad Request", {}, io.BytesIO(body))
+
+        self.assertEqual(_http_error_diagnostics(error), ("unknown", "invalid_request"))
 
 
 if __name__ == "__main__":

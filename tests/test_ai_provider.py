@@ -6,6 +6,7 @@ from api.ai_provider import (
     AIProviderError,
     SYSTEM_INSTRUCTIONS,
     build_gemini_contents,
+    classify_provider_error,
     get_provider_config,
 )
 
@@ -68,11 +69,17 @@ class AIProviderTests(unittest.TestCase):
         self.assertEqual(generation_config.max_output_tokens, 700)
 
     def test_provider_quota_errors_are_retryable_without_details(self):
-        error = AIProviderError("gemini", "generate_content", 429)
+        error = AIProviderError("gemini", "generate_content", 429, "rate_limited")
 
         self.assertEqual(error.status, 503)
         self.assertIn("limite temporário", error.message)
         self.assertNotIn("key", error.message.lower())
+
+    def test_provider_error_classification_does_not_expose_upstream_text(self):
+        self.assertEqual(classify_provider_error(401, "APIError", "Invalid API key abc123"), "authentication_or_permission")
+        self.assertEqual(classify_provider_error(404, "APIError", "Model not found"), "model_unavailable")
+        self.assertEqual(classify_provider_error(503, "APIError"), "upstream_unavailable")
+        self.assertEqual(classify_provider_error(None, "TimeoutError"), "timeout")
 
 
 if __name__ == "__main__":

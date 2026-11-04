@@ -1,6 +1,7 @@
 import { LoaderCircle, MessageSquare, Plus, Send, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ChatMessage as ChatMessageView, MascotAvatar } from "../components/ChatMessage";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
   createChatConversation,
   deleteChatConversation,
@@ -26,6 +27,7 @@ export function ChatPage({ userId }: { userId: string }) {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [conversationToDelete, setConversationToDelete] = useState<ChatConversation | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const historyRequestId = useRef(0);
   const sendingRef = useRef(false);
@@ -71,6 +73,7 @@ export function ChatPage({ userId }: { userId: string }) {
       if (requestId === historyRequestId.current) {
         setError(reason instanceof Error ? reason.message : "Não foi possível abrir esta conversa.");
       }
+
     }
   }
 
@@ -83,13 +86,19 @@ export function ChatPage({ userId }: { userId: string }) {
     setError("");
   }
 
-  async function removeConversation(id: string) {
-    if (sending || !window.confirm("Excluir esta conversa? Essa ação não pode ser desfeita.")) return;
+  function removeConversation(conversation: ChatConversation) {
+    if (!sending) setConversationToDelete(conversation);
+  }
+
+  async function confirmRemoveConversation() {
+    const conversation = conversationToDelete;
+    if (!conversation || sending) return;
+    setConversationToDelete(null);
     setError("");
     try {
-      await deleteChatConversation(id);
-      setConversations((current) => current.filter((item) => item.id !== id));
-      if (conversationId === id) {
+      await deleteChatConversation(conversation.id);
+      setConversations((current) => current.filter((item) => item.id !== conversation.id));
+      if (conversationId === conversation.id) {
         historyRequestId.current += 1;
         setConversationId(null);
         setMessages([]);
@@ -186,7 +195,7 @@ export function ChatPage({ userId }: { userId: string }) {
                     aria-label={`Excluir conversa ${conversation.title}`}
                     className="chat-delete-button"
                     type="button"
-                    onClick={() => void removeConversation(conversation.id)}
+                    onClick={() => removeConversation(conversation)}
                     disabled={sending}
                   >
                     <Trash2 size={14} />
@@ -268,6 +277,16 @@ export function ChatPage({ userId }: { userId: string }) {
           </p>
         </section>
       </div>
+      {conversationToDelete && (
+        <ConfirmDialog
+          title="Excluir conversa?"
+          message="Essa ação não pode ser desfeita. As mensagens desta conversa também serão removidas."
+          confirmLabel="Excluir conversa"
+          danger
+          onConfirm={() => void confirmRemoveConversation()}
+          onCancel={() => setConversationToDelete(null)}
+        />
+      )}
     </section>
   );
 }
