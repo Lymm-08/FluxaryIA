@@ -366,7 +366,7 @@ def _handle_chat(handler: BaseHTTPRequestHandler) -> None:
     financial_data = _load_financial_data(base_url, api_key, access_token, user_id)
     summary = _financial_summary(financial_data)
     if summary["transactions_truncated"]:
-        summary["data_note"] = "A análise considera até 1.500 movimentações recentes; saldos de contas e totais de cartões podem estar incompletos."
+        summary["data_note"] = "A análise considera até 1.500 movimentações recentes; comparações mensais, saldos de contas e totais de cartões podem estar incompletos."
     reply = _openai_reply(openai_key, history, message.strip(), summary)
 
     _supabase_request(

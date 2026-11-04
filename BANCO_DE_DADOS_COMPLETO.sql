@@ -280,6 +280,8 @@ create table if not exists public.ai_usage_events (
 );
 create index if not exists ai_usage_events_user_created_idx
   on public.ai_usage_events (user_id, created_at desc);
+create index if not exists ai_usage_events_created_idx
+  on public.ai_usage_events (created_at);
 
 -- 5. Funções e triggers para timestamps e criação automática do perfil.
 create or replace function public.set_updated_at()
