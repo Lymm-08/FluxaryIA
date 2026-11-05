@@ -7,7 +7,9 @@ import { SettingsPage } from "../src/pages/SettingsPage";
 const deletionServices = vi.hoisted(() => ({
   requestAccountDeletion: vi.fn(),
   validateAccountDeletionToken: vi.fn(),
+  validateAccountDeletionCode: vi.fn(),
   confirmAccountDeletion: vi.fn(),
+  confirmAccountDeletionCode: vi.fn(),
   signOut: vi.fn(),
   clearAuthSession: vi.fn(),
 }));
@@ -15,7 +17,9 @@ const deletionServices = vi.hoisted(() => ({
 vi.mock("../src/services/accountDeletion", () => ({
   requestAccountDeletion: deletionServices.requestAccountDeletion,
   validateAccountDeletionToken: deletionServices.validateAccountDeletionToken,
+  validateAccountDeletionCode: deletionServices.validateAccountDeletionCode,
   confirmAccountDeletion: deletionServices.confirmAccountDeletion,
+  confirmAccountDeletionCode: deletionServices.confirmAccountDeletionCode,
 }));
 
 vi.mock("../src/lib/supabase", () => ({
@@ -36,6 +40,7 @@ const settingsProps = {
   onToggleDashboardWidget: vi.fn(),
   onSendPasswordReset: vi.fn().mockResolvedValue(undefined),
   onResetBalance: vi.fn(),
+  onAccountDeletionStarted: vi.fn(),
 };
 
 describe("Confirmação de exclusão de conta", () => {
@@ -46,24 +51,28 @@ describe("Confirmação de exclusão de conta", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    deletionServices.requestAccountDeletion.mockResolvedValue(undefined);
+    deletionServices.requestAccountDeletion.mockResolvedValue("f287b855-fb39-4680-bf0f-1bf64dba32a1");
     deletionServices.validateAccountDeletionToken.mockResolvedValue("valid");
+    deletionServices.validateAccountDeletionCode.mockResolvedValue("valid");
     deletionServices.confirmAccountDeletion.mockResolvedValue(undefined);
+    deletionServices.confirmAccountDeletionCode.mockResolvedValue(undefined);
     deletionServices.signOut.mockResolvedValue({ error: null });
   });
 
-  it("solicita confirmação antes de enviar o e-mail e mantém a conta ativa", async () => {
+  it("solicita confirmação antes de enviar o código e mantém a conta ativa", async () => {
     const user = userEvent.setup();
     render(<SettingsPage {...settingsProps} />);
 
     await user.click(screen.getByRole("button", { name: "Excluir minha conta" }));
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
-    expect(screen.getByText(/nada será excluído até você abrir o link/i)).toBeTruthy();
+    expect(screen.getByText(/nada será excluído até você informar o código/i)).toBeTruthy();
     expect(deletionServices.requestAccountDeletion).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Enviar link de confirmação" }));
+    await user.click(screen.getByRole("button", { name: "Enviar código de confirmação" }));
     await waitFor(() => expect(deletionServices.requestAccountDeletion).toHaveBeenCalledOnce());
-    expect(await screen.findByText(/A conta ainda não foi excluída/)).toBeTruthy();
+    expect(settingsProps.onAccountDeletionStarted).toHaveBeenCalledWith(
+      "f287b855-fb39-4680-bf0f-1bf64dba32a1",
+    );
   });
 
   it("mostra erros ao falhar o envio da solicitação", async () => {
@@ -72,7 +81,7 @@ describe("Confirmação de exclusão de conta", () => {
     render(<SettingsPage {...settingsProps} />);
 
     await user.click(screen.getByRole("button", { name: "Excluir minha conta" }));
-    await user.click(await screen.findByRole("button", { name: "Enviar link de confirmação" }));
+    await user.click(await screen.findByRole("button", { name: "Enviar código de confirmação" }));
 
     expect((await screen.findByRole("alert")).textContent).toContain("E-mail não enviado.");
   });
@@ -93,6 +102,25 @@ describe("Confirmação de exclusão de conta", () => {
     expect(await screen.findByRole("heading", { name: "Conta excluída" })).toBeTruthy();
     expect(deletionServices.signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(window.location.search).toContain("accountDeletionComplete=1");
+  });
+
+  it("valida o código recebido e exige uma confirmação final antes de excluir", async () => {
+    const user = userEvent.setup();
+    render(<AccountDeletionPage requestId="f287b855-fb39-4680-bf0f-1bf64dba32a1" />);
+
+    await user.type(screen.getByLabelText("Código recebido por e-mail"), "012345");
+    await user.click(screen.getByRole("button", { name: "Confirmar código" }));
+    expect(await screen.findByRole("heading", { name: "Confirme a exclusão da sua conta" })).toBeTruthy();
+    expect(deletionServices.confirmAccountDeletionCode).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Excluir minha conta permanentemente" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar exclusão" }));
+
+    await waitFor(() => expect(deletionServices.confirmAccountDeletionCode).toHaveBeenCalledWith(
+      "f287b855-fb39-4680-bf0f-1bf64dba32a1",
+      "012345",
+    ));
+    expect(await screen.findByRole("heading", { name: "Conta excluída" })).toBeTruthy();
   });
 
   it("limpa o token local mesmo se a sessão Supabase não puder ser encerrada", async () => {

@@ -1,8 +1,8 @@
 import io
 import json
 import unittest
+import uuid
 from unittest.mock import call, patch
-from urllib.parse import parse_qs, urlsplit
 
 from api.account_deletion import (
     AccountDeletionConfig,
@@ -23,7 +23,6 @@ CONFIG = AccountDeletionConfig(
     supabase_service_key="server-secret",
     resend_api_key="resend-secret",
     resend_from_email="Fluxary <verified@example.com>",
-    public_app_url="https://fluxary.example",
 )
 
 
@@ -55,15 +54,22 @@ class AccountDeletionTests(unittest.TestCase):
 
     @patch("api.account_deletion.send_confirmation_email")
     @patch("api.account_deletion._rpc", return_value={"status": "created"})
-    @patch("api.account_deletion.secrets.token_urlsafe", return_value="a" * 43)
-    def test_request_persists_only_hash_and_mails_token_once(self, _token, rpc, send_email):
-        create_deletion_request(CONFIG, "user-uuid", "person@example.com")
+    @patch("api.account_deletion.secrets.randbelow", return_value=12345)
+    @patch("api.account_deletion.uuid.uuid4", return_value=uuid.UUID("f287b855-fb39-4680-bf0f-1bf64dba32a1"))
+    def test_request_persists_only_hash_and_mails_code_once(self, _request_id, _code, rpc, send_email):
+        request_id = create_deletion_request(CONFIG, "user-uuid", "person@example.com")
 
-        stored_hash = rpc.call_args.args[2]["p_token_hash"]
-        self.assertEqual(stored_hash, hash_token("a" * 43))
-        confirmation_url = send_email.call_args.args[2]
-        self.assertEqual(parse_qs(urlsplit(confirmation_url).fragment)["accountDeletionToken"], ["a" * 43])
-        self.assertNotIn("a" * 43, str(rpc.call_args.args[2]))
+        rpc.assert_called_once_with(
+            CONFIG,
+            "request_fluxary_account_deletion_code",
+            {
+                "p_user_id": "user-uuid",
+                "p_request_id": "f287b855-fb39-4680-bf0f-1bf64dba32a1",
+                "p_token_hash": hash_token("f287b855-fb39-4680-bf0f-1bf64dba32a1:012345"),
+            },
+        )
+        self.assertEqual(request_id, "f287b855-fb39-4680-bf0f-1bf64dba32a1")
+        send_email.assert_called_once_with(CONFIG, "person@example.com", "012345")
 
     @patch("api.account_deletion.send_confirmation_email")
     @patch("api.account_deletion._rpc", return_value={"status": "rate_limited"})
@@ -132,7 +138,7 @@ class AccountDeletionTests(unittest.TestCase):
             "Bearer user-access-token",
         )
 
-    @patch("api.delete_account.create_deletion_request")
+    @patch("api.delete_account.create_deletion_request", return_value="f287b855-fb39-4680-bf0f-1bf64dba32a1")
     @patch("api.delete_account.authenticate_user", return_value={"id": "session-user", "email": "person@example.com"})
     @patch("api.delete_account.load_config", return_value=CONFIG)
     def test_request_uses_server_verified_user_id_not_submitted_id(
@@ -147,7 +153,10 @@ class AccountDeletionTests(unittest.TestCase):
 
         create_request.assert_called_once_with(CONFIG, "session-user", "person@example.com")
         self.assertEqual(handler.status, 200)
-        self.assertEqual(json.loads(handler.wfile.getvalue())["status"], "email_sent")
+        self.assertEqual(
+            json.loads(handler.wfile.getvalue()),
+            {"status": "email_sent", "request_id": "f287b855-fb39-4680-bf0f-1bf64dba32a1"},
+        )
 
     @patch("api.delete_account.authenticate_user")
     @patch("api.delete_account.load_config", return_value=CONFIG)
@@ -158,6 +167,32 @@ class AccountDeletionTests(unittest.TestCase):
             _handle_post(handler)
 
         authenticate.assert_not_called()
+
+    @patch("api.delete_account.validate_deletion_code", return_value={"status": "invalid"})
+    @patch("api.delete_account.load_config", return_value=CONFIG)
+    def test_code_validation_uses_request_id_and_returns_invalid_status(self, _config, validate_code):
+        request_id = "f287b855-fb39-4680-bf0f-1bf64dba32a1"
+        handler = FakeHandler({"action": "validate", "request_id": request_id, "code": "001234"})
+
+        _handle_post(handler)
+
+        validate_code.assert_called_once_with(CONFIG, request_id, "001234")
+        self.assertEqual(handler.status, 200)
+        self.assertEqual(json.loads(handler.wfile.getvalue()), {"status": "invalid"})
+
+    @patch("api.delete_account.validate_deletion_code")
+    @patch("api.delete_account.load_config", return_value=CONFIG)
+    def test_malformed_confirmation_code_is_rejected_before_database_lookup(self, _config, validate_code):
+        handler = FakeHandler({
+            "action": "validate",
+            "request_id": "f287b855-fb39-4680-bf0f-1bf64dba32a1",
+            "code": "12345x",
+        })
+
+        with self.assertRaises(AccountDeletionError):
+            _handle_post(handler)
+
+        validate_code.assert_not_called()
 
     @patch("api.account_deletion._remove_storage_objects")
     @patch("api.account_deletion._list_owned_storage_page")
@@ -189,7 +224,7 @@ class AccountDeletionTests(unittest.TestCase):
 
     @patch("api.account_deletion._request_json")
     def test_email_uses_configured_sender_and_requested_copy(self, request_json):
-        send_confirmation_email(CONFIG, "person@example.com", "https://fluxary.example/confirm?token=sample")
+        send_confirmation_email(CONFIG, "person@example.com", "012345")
 
         args = request_json.call_args.args
         email = args[3]
@@ -199,7 +234,9 @@ class AccountDeletionTests(unittest.TestCase):
         self.assertEqual(email["subject"], "Confirmação de exclusão da conta Fluxary")
         self.assertIn("30 minutos", email["html"])
         self.assertIn("basta ignorar este e-mail", email["text"])
-        self.assertIn("Confirmar exclusão da conta", email["html"])
+        self.assertIn("012345", email["html"])
+        self.assertIn("012345", email["text"])
+        self.assertNotIn("https://", email["text"])
 
 
 if __name__ == "__main__":

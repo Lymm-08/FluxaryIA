@@ -1,12 +1,16 @@
 import { supabase } from "../lib/supabase";
 
 type AccountDeletionResponse = {
-  status?: "email_sent" | "valid" | "expired" | "invalid" | "used" | "deleted";
+  status?: "email_sent" | "valid" | "expired" | "invalid" | "used" | "locked" | "deleted";
   error?: string;
+  request_id?: string;
 };
 
 async function callAccountDeletion(
-  payload: { action: "request" } | { action: "validate" | "confirm"; token: string },
+  payload:
+    | { action: "request" }
+    | { action: "validate" | "confirm"; token: string }
+    | { action: "validate" | "confirm"; request_id: string; code: string },
   authenticated: boolean,
 ): Promise<AccountDeletionResponse> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -33,9 +37,12 @@ async function callAccountDeletion(
   return result;
 }
 
-export async function requestAccountDeletion(): Promise<void> {
+export async function requestAccountDeletion(): Promise<string> {
   const result = await callAccountDeletion({ action: "request" }, true);
-  if (result.status !== "email_sent") throw new Error("Não foi possível enviar o e-mail de confirmação.");
+  if (result.status !== "email_sent" || !result.request_id) {
+    throw new Error("Não foi possível enviar o e-mail de confirmação.");
+  }
+  return result.request_id;
 }
 
 export async function validateAccountDeletionToken(
@@ -55,5 +62,33 @@ export async function validateAccountDeletionToken(
 
 export async function confirmAccountDeletion(token: string): Promise<void> {
   const result = await callAccountDeletion({ action: "confirm", token }, false);
+  if (result.status !== "deleted") throw new Error("Não foi possível excluir a conta.");
+}
+
+export async function validateAccountDeletionCode(
+  requestId: string,
+  code: string,
+): Promise<"valid" | "expired" | "invalid" | "used" | "locked"> {
+  const result = await callAccountDeletion(
+    { action: "validate", request_id: requestId, code },
+    false,
+  );
+  if (
+    result.status !== "valid"
+    && result.status !== "expired"
+    && result.status !== "invalid"
+    && result.status !== "used"
+    && result.status !== "locked"
+  ) {
+    throw new Error("Não foi possível validar o código de confirmação.");
+  }
+  return result.status;
+}
+
+export async function confirmAccountDeletionCode(requestId: string, code: string): Promise<void> {
+  const result = await callAccountDeletion(
+    { action: "confirm", request_id: requestId, code },
+    false,
+  );
   if (result.status !== "deleted") throw new Error("Não foi possível excluir a conta.");
 }

@@ -1,19 +1,20 @@
 import hashlib
-import html
 import json
 import logging
 import os
 import secrets
+import uuid
 from dataclasses import dataclass
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode, urlsplit
+from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 
 
 logger = logging.getLogger(__name__)
 EMAIL_SUBJECT = "Confirmação de exclusão da conta Fluxary"
 TOKEN_LIFETIME_MINUTES = 30
+DELETION_CODE_LENGTH = 6
 STORAGE_PAGE_SIZE = 100
 STORAGE_DELETE_BATCH_SIZE = 100
 
@@ -34,7 +35,6 @@ class AccountDeletionConfig:
     supabase_service_key: str
     resend_api_key: str
     resend_from_email: str
-    public_app_url: str
 
 
 # Configuração do backend; credenciais administrativas nunca são retornadas ao frontend.
@@ -48,7 +48,6 @@ def load_config(require_email: bool = False) -> AccountDeletionConfig:
     supabase_service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
     resend_api_key = os.environ.get("RESEND_API_KEY", "").strip()
     resend_from_email = os.environ.get("RESEND_FROM_EMAIL", "").strip()
-    public_app_url = os.environ.get("PUBLIC_APP_URL", "").strip().rstrip("/")
 
     missing = []
     if not supabase_url:
@@ -62,8 +61,6 @@ def load_config(require_email: bool = False) -> AccountDeletionConfig:
             missing.append("RESEND_API_KEY")
         if not resend_from_email:
             missing.append("RESEND_FROM_EMAIL")
-        if not public_app_url:
-            missing.append("PUBLIC_APP_URL")
     if missing:
         logger.error(
             "account_deletion_configuration_error stage=configuration error_type=MissingConfiguration variables=%s",
@@ -78,18 +75,12 @@ def load_config(require_email: bool = False) -> AccountDeletionConfig:
     parsed_url = urlsplit(supabase_url)
     if parsed_url.scheme != "https" or not parsed_url.netloc:
         raise AccountDeletionError(503, "A solicitação de exclusão não está configurada no servidor.", "configuration")
-    if public_app_url:
-        app_url = urlsplit(public_app_url)
-        is_local_http = app_url.scheme == "http" and app_url.hostname in ("localhost", "127.0.0.1")
-        if not app_url.netloc or (app_url.scheme != "https" and not is_local_http):
-            raise AccountDeletionError(503, "A solicitação de exclusão não está configurada no servidor.", "configuration")
     return AccountDeletionConfig(
         supabase_url=supabase_url,
         supabase_public_key=supabase_public_key,
         supabase_service_key=supabase_service_key,
         resend_api_key=resend_api_key,
         resend_from_email=resend_from_email,
-        public_app_url=public_app_url,
     )
 
 
@@ -177,12 +168,17 @@ def create_deletion_request(
     config: AccountDeletionConfig,
     user_id: str,
     email: str,
-) -> None:
-    token = secrets.token_urlsafe(32)
+) -> str:
+    request_id = str(uuid.uuid4())
+    code = f"{secrets.randbelow(10 ** DELETION_CODE_LENGTH):0{DELETION_CODE_LENGTH}d}"
     result = _rpc(
         config,
-        "request_fluxary_account_deletion",
-        {"p_user_id": user_id, "p_token_hash": hash_token(token)},
+        "request_fluxary_account_deletion_code",
+        {
+            "p_user_id": user_id,
+            "p_request_id": request_id,
+            "p_token_hash": hash_token(f"{request_id}:{code}"),
+        },
     )
     if not isinstance(result, dict):
         raise AccountDeletionError(502, "Não foi possível registrar a solicitação.", "supabase_create_request")
@@ -191,17 +187,16 @@ def create_deletion_request(
     if result.get("status") != "created":
         raise AccountDeletionError(400, "Não foi possível registrar a solicitação.", "supabase_create_request")
 
-    confirmation_url = f"{config.public_app_url}/#{urlencode({'accountDeletionToken': token})}"
-    send_confirmation_email(config, email, confirmation_url)
+    send_confirmation_email(config, email, code)
+    return request_id
 
 
 # E-mail transacional com conteúdo HTML e texto simples.
 def send_confirmation_email(
     config: AccountDeletionConfig,
     recipient: str,
-    confirmation_url: str,
+    code: str,
 ) -> None:
-    safe_url = html.escape(confirmation_url, quote=True)
     html_content = f"""\
 <!doctype html>
 <html lang="pt-BR">
@@ -213,11 +208,9 @@ def send_confirmation_email(
             <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:#268158">FLUXARY</div>
             <h1 style="margin:18px 0 12px;font-size:23px">Confirme a exclusão da sua conta</h1>
             <p style="font-size:15px;line-height:1.6">Recebemos uma solicitação para excluir permanentemente sua conta Fluxary e os dados associados.</p>
-            <p style="font-size:15px;line-height:1.6">Para continuar, confirme explicitamente na página segura do Fluxary:</p>
-            <p style="margin:26px 0">
-              <a href="{safe_url}" style="display:inline-block;padding:14px 20px;border-radius:10px;background:#21835c;color:#fff;text-decoration:none;font-weight:bold">Confirmar exclusão da conta</a>
-            </p>
-            <p style="font-size:13px;line-height:1.6;color:#68776d">Este link expira em {TOKEN_LIFETIME_MINUTES} minutos. Abrir o link não exclui a conta; será necessária uma confirmação final.</p>
+            <p style="font-size:15px;line-height:1.6">Digite este código na página de confirmação do Fluxary:</p>
+            <p style="margin:26px 0;font-size:32px;font-weight:bold;letter-spacing:8px;color:#21835c">{code}</p>
+            <p style="font-size:13px;line-height:1.6;color:#68776d">Este código expira em {TOKEN_LIFETIME_MINUTES} minutos e pode ser usado uma única vez. A conta só será excluída após a confirmação final na página.</p>
             <p style="font-size:13px;line-height:1.6;color:#68776d">Se não foi você quem solicitou, basta ignorar este e-mail. Sua conta permanecerá ativa.</p>
           </td></tr>
         </table>
@@ -227,9 +220,10 @@ def send_confirmation_email(
 </html>"""
     text_content = (
         "Recebemos uma solicitação para excluir permanentemente sua conta Fluxary e os dados associados.\n\n"
-        "Para continuar, abra o link e confirme explicitamente na página do Fluxary:\n"
-        f"{confirmation_url}\n\n"
-        f"O link expira em {TOKEN_LIFETIME_MINUTES} minutos. Abrir o link não exclui a conta.\n"
+        "Digite este código na página de confirmação do Fluxary:\n"
+        f"{code}\n\n"
+        f"O código expira em {TOKEN_LIFETIME_MINUTES} minutos e pode ser usado uma única vez. "
+        "A conta só será excluída após a confirmação final na página.\n"
         "Se não foi você quem solicitou, basta ignorar este e-mail."
     )
     _request_json(
@@ -255,6 +249,20 @@ def validate_token(config: AccountDeletionConfig, token: str) -> dict[str, Any]:
     result = _rpc(config, "validate_fluxary_account_deletion_token", {"p_token_hash": hash_token(token)})
     if not isinstance(result, dict):
         raise AccountDeletionError(502, "Não foi possível validar este link.", "supabase_validate_token")
+    return result
+
+
+def validate_deletion_code(config: AccountDeletionConfig, request_id: str, code: str) -> dict[str, Any]:
+    result = _rpc(
+        config,
+        "validate_fluxary_account_deletion_code",
+        {
+            "p_request_id": request_id,
+            "p_token_hash": hash_token(f"{request_id}:{code}"),
+        },
+    )
+    if not isinstance(result, dict):
+        raise AccountDeletionError(502, "Não foi possível validar o código.", "supabase_validate_code")
     return result
 
 
@@ -349,5 +357,34 @@ def confirm_account_deletion(config: AccountDeletionConfig, token: str) -> None:
     if not secrets.compare_digest(expected_user_id, consumed_user_id):
         logger.error("account_deletion_failure stage=token_owner_check error_type=OwnerMismatch")
         raise AccountDeletionError(409, "Este link não é mais válido.", "token_owner_check")
+    remove_owned_storage_objects(config, consumed_user_id)
+    delete_auth_user(config, consumed_user_id)
+
+
+def consume_deletion_code(config: AccountDeletionConfig, request_id: str, code: str) -> str:
+    result = _rpc(
+        config,
+        "consume_fluxary_account_deletion_code",
+        {
+            "p_request_id": request_id,
+            "p_token_hash": hash_token(f"{request_id}:{code}"),
+        },
+    )
+    if not isinstance(result, dict):
+        raise AccountDeletionError(502, "Não foi possível confirmar o código.", "supabase_consume_code")
+    if result.get("status") != "consumed" or not isinstance(result.get("user_id"), str):
+        raise AccountDeletionError(409, "Este código não é mais válido. Solicite uma nova confirmação.", "code_consumption")
+    return result["user_id"]
+
+
+def confirm_account_deletion_code(config: AccountDeletionConfig, request_id: str, code: str) -> None:
+    state = validate_deletion_code(config, request_id, code)
+    if state.get("status") != "valid" or not isinstance(state.get("user_id"), str):
+        raise AccountDeletionError(409, "Este código não é mais válido. Verifique-o ou solicite um novo.", "code_validation")
+    expected_user_id = state["user_id"]
+    consumed_user_id = consume_deletion_code(config, request_id, code)
+    if not secrets.compare_digest(expected_user_id, consumed_user_id):
+        logger.error("account_deletion_failure stage=code_owner_check error_type=OwnerMismatch")
+        raise AccountDeletionError(409, "Este código não é mais válido.", "code_owner_check")
     remove_owned_storage_objects(config, consumed_user_id)
     delete_auth_user(config, consumed_user_id)

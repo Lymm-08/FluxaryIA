@@ -12,16 +12,16 @@ type SettingsPageProps = {
   onToggleDashboardWidget: (widget: DashboardWidget) => void;
   onSendPasswordReset: (email: string) => Promise<void>;
   onResetBalance: () => void;
+  onAccountDeletionStarted: (requestId: string) => void;
 };
 
 // Preferências do tema e segurança da conta.
-export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidgets, onToggleDashboardWidget, onSendPasswordReset, onResetBalance }: SettingsPageProps) {
+export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidgets, onToggleDashboardWidget, onSendPasswordReset, onResetBalance, onAccountDeletionStarted }: SettingsPageProps) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [deleteRequestOpen, setDeleteRequestOpen] = useState(false);
   const [deletionRequestSent, setDeletionRequestSent] = useState(false);
-  const [deletionRequestMessage, setDeletionRequestMessage] = useState("");
   const [deletionRequestError, setDeletionRequestError] = useState("");
 
   async function requestPasswordReset() {
@@ -41,13 +41,12 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
 
   async function submitDeletionRequest() {
     setDeleteRequestOpen(false);
-    setDeletionRequestMessage("");
     setDeletionRequestError("");
     setBusy(true);
     try {
-      await requestAccountDeletion();
+      const requestId = await requestAccountDeletion();
       setDeletionRequestSent(true);
-      setDeletionRequestMessage("Enviamos um link de confirmação para seu e-mail. A conta ainda não foi excluída.");
+      onAccountDeletionStarted(requestId);
     } catch (reason) {
       setDeletionRequestError(reason instanceof Error ? reason.message : "Não foi possível solicitar a exclusão da conta.");
     } finally {
@@ -102,12 +101,7 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
               </button>
               <div className="settings-delete-account">
                 <h3>Excluir minha conta</h3>
-                <p>A solicitação envia um link ao seu e-mail. Sua conta só será excluída depois de confirmar pelo link e aceitar a confirmação final.</p>
-                {deletionRequestMessage && (
-                  <div className="auth-feedback auth-feedback-success" role="status">
-                    <ShieldCheck size={16} /><span>{deletionRequestMessage}</span>
-                  </div>
-                )}
+                <p>Enviaremos um código ao seu e-mail. Sua conta só será excluída depois que você informar o código e aceitar a confirmação final.</p>
                 {deletionRequestError && <div className="auth-feedback auth-feedback-error" role="alert"><AlertCircle size={16} /><span>{deletionRequestError}</span></div>}
                 <button
                   className="button-danger"
@@ -154,8 +148,8 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
       {deleteRequestOpen && (
         <ConfirmDialog
           title="Solicitar exclusão da conta?"
-          message="A exclusão é permanente e removerá sua conta e os dados associados. Primeiro enviaremos um link para seu e-mail; nada será excluído até você abrir o link e confirmar novamente."
-          confirmLabel="Enviar link de confirmação"
+          message="A exclusão é permanente e removerá sua conta e os dados associados. Primeiro enviaremos um código para seu e-mail; nada será excluído até você informar o código e confirmar novamente."
+          confirmLabel="Enviar código de confirmação"
           danger
           onConfirm={() => void submitDeletionRequest()}
           onCancel={() => setDeleteRequestOpen(false)}

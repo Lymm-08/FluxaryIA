@@ -24,6 +24,7 @@ import { MovementsPage } from "./pages/MovementsPage";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { TransactionDetailsModal } from "./components/TransactionDetailsModal";
 import { ResetFinanceDialog } from "./components/ResetFinanceDialog";
+import { formatErrorDetails } from "./utils/errors";
 
 type ConfirmationRequest = { title: string; message: string; confirmLabel: string; danger: boolean };
 // Decide entre conta autenticada, recuperação de senha e modo local.
@@ -80,6 +81,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
   const [resetFinanceDialogOpen, setResetFinanceDialogOpen] = useState(false);
+  const [accountDeletionRequestId, setAccountDeletionRequestId] = useState("");
   const confirmationResolver = useRef<((confirmed: boolean) => void) | null>(null);
   const reportError = useCallback((message: string) => setError(message), []);
   const finance = useFinanceData(reportError, userId);
@@ -229,6 +231,9 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     if (incomeCelebrationTimeout.current !== null) clearTimeout(incomeCelebrationTimeout.current);
   }, []);
 
+  if (accountDeletionRequestId) {
+    return <AccountDeletionPage requestId={accountDeletionRequestId} />;
+  }
   if (finance.loading) return <div className="screen-state">Carregando seus dados financeiros...</div>;
   if (finance.loadError) return (
     <div className="screen-state cloud-error-state">
@@ -328,8 +333,18 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     setResetFinanceDialogOpen(true);
   }
 
-  function applyMonthlyReset(deleteCardHistory: boolean) {
+  async function applyMonthlyReset(deleteCardHistory: boolean) {
     const reset = resetMonthlyFinance(finance.transactions, finance.accounts, today.slice(0, 7), deleteCardHistory);
+    const remainingIds = new Set(reset.transactions.map((transaction) => transaction.id));
+    const deletedIds = finance.transactions
+      .filter((transaction) => !remainingIds.has(transaction.id))
+      .map((transaction) => transaction.id);
+    try {
+      await finance.deleteTransactions(deletedIds);
+    } catch (reason: unknown) {
+      setError(`Não foi possível zerar as movimentações na nuvem: ${formatErrorDetails(reason, "falha desconhecida")}`);
+      return;
+    }
     finance.setTransactions(reset.transactions);
     finance.setAccounts(reset.accounts);
     setResetFinanceDialogOpen(false);
@@ -528,8 +543,12 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       confirmLabel: "Excluir movimentação",
       danger: true,
     })) return;
-    finance.setTransactions((current) => current.filter((item) => item.id !== transaction.id));
-    setError("");
+    try {
+      await finance.deleteTransactions([transaction.id]);
+      setError("");
+    } catch (reason: unknown) {
+      setError(`Não foi possível excluir a movimentação na nuvem: ${formatErrorDetails(reason, "falha desconhecida")}`);
+    }
   }
 
   async function recordCardPayment(amount: number, accountId: string) {
@@ -754,7 +773,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     setError("");
   }
 
-  function createCashBox(name: string) {
+  async function createCashBox(name: string, operationId: string) {
     const normalizedName = name.trim();
     if (!normalizedName) {
       setError("Dê um nome para a caixinha.");
@@ -764,12 +783,17 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       setError("Já existe uma caixinha com esse nome.");
       return false;
     }
-    finance.setCashBoxes((current) => [...current, { id: crypto.randomUUID(), name: normalizedName }]);
-    setError("");
-    return true;
+    try {
+      await finance.saveCashBox({ id: operationId, name: normalizedName });
+      setError("");
+      return true;
+    } catch (reason: unknown) {
+      setError(`Não foi possível salvar a caixinha na nuvem: ${formatErrorDetails(reason, "falha desconhecida")}`);
+      return false;
+    }
   }
 
-  function renameCashBox(cashBox: CashBox, name: string) {
+  async function renameCashBox(cashBox: CashBox, name: string) {
     const normalizedName = name.trim();
     if (!normalizedName) {
       setError("Dê um nome para a caixinha.");
@@ -782,11 +806,14 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       setError("Já existe uma caixinha com esse nome.");
       return false;
     }
-    finance.setCashBoxes((current) => current.map((item) =>
-      item.id === cashBox.id ? { ...item, name: normalizedName } : item,
-    ));
-    setError("");
-    return true;
+    try {
+      await finance.saveCashBox({ ...cashBox, name: normalizedName });
+      setError("");
+      return true;
+    } catch (reason: unknown) {
+      setError(`Não foi possível atualizar a caixinha na nuvem: ${formatErrorDetails(reason, "falha desconhecida")}`);
+      return false;
+    }
   }
 
   async function deleteCashBox(cashBox: CashBox) {
@@ -800,11 +827,21 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       confirmLabel: "Excluir caixinha",
       danger: true,
     })) return;
-    finance.setCashBoxes((current) => current.filter((item) => item.id !== cashBox.id));
-    setError("");
+    try {
+      await finance.deleteCashBox(cashBox.id);
+      setError("");
+    } catch (reason: unknown) {
+      setError(`Não foi possível excluir a caixinha na nuvem: ${formatErrorDetails(reason, "falha desconhecida")}`);
+    }
   }
 
-  function moveCashBoxMoney(cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") {
+  async function moveCashBoxMoney(
+    cashBox: CashBox,
+    accountId: string,
+    amount: number,
+    kind: "deposit" | "withdrawal",
+    operationId: string,
+  ) {
     const account = finance.accounts.find((item) => item.id === accountId);
     if (!finance.cashBoxes.some((item) => item.id === cashBox.id) || !account) {
       setError("Selecione uma caixinha e uma conta válidas para a transferência.");
@@ -812,6 +849,10 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
     }
     if (!Number.isFinite(amount) || amount <= 0) {
       setError("Informe um valor válido para a transferência.");
+      return false;
+    }
+    if (Math.round(amount * 100) !== amount * 100 || amount > 999999999999.99) {
+      setError("Informe um valor com até duas casas decimais dentro do limite permitido.");
       return false;
     }
     const accountBalance = getAccountBalance(account, finance.transactions);
@@ -827,7 +868,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       return false;
     }
     const transaction: Transaction = {
-      id: crypto.randomUUID(),
+      id: operationId,
       description: `${kind === "deposit" ? "Aporte" : "Retirada"}: ${cashBox.name}`,
       category: "Caixinha",
       transaction_date: localDateString(new Date()),
@@ -838,9 +879,14 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       cashBoxId: cashBox.id,
       cashBoxKind: kind,
     };
-    finance.setTransactions((current) => [transaction, ...current]);
-    setError("");
-    return true;
+    try {
+      await finance.saveCashBoxMovement(transaction);
+      setError("");
+      return true;
+    } catch (reason: unknown) {
+      setError(`Não foi possível salvar a movimentação da caixinha: ${formatErrorDetails(reason, "falha desconhecida")}`);
+      return false;
+    }
   }
 
   async function removeEntry(type: FinanceEntryType, item: FinanceEntry) {
@@ -878,7 +924,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
       onMarkSettled={(transactionId) => { void markTransactionSettled(transactionId); }}
       onSignOut={() => {
         void onSignOut().catch((reason: unknown) => {
-          reportError(reason instanceof Error ? reason.message : "Não foi possível sair da conta.");
+          reportError(formatErrorDetails(reason, "Não foi possível sair da conta."));
         });
       }}
     >
@@ -913,6 +959,7 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
           )}
           onSendPasswordReset={onSendPasswordReset}
           onResetBalance={resetMonthlyBalance}
+          onAccountDeletionStarted={setAccountDeletionRequestId}
         />
       ) : (
         <SectionRouter

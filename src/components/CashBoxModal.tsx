@@ -1,5 +1,5 @@
 import { Check, Plus, Wallet, X } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import type { Account, CashBox } from "../types/finance";
 import { parseAmount } from "../utils/format";
 import { StyledSelect } from "./StyledSelect";
@@ -9,11 +9,11 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
   accounts: Account[];
   accountBalances: Record<string, number>;
   onClose: () => void;
-  onCreate: (name: string) => boolean;
-  onRename: (cashBox: CashBox, name: string) => boolean;
+  onCreate: (name: string, operationId: string) => boolean | Promise<boolean>;
+  onRename: (cashBox: CashBox, name: string) => boolean | Promise<boolean>;
   movementKind: "deposit" | "withdrawal";
   editing?: boolean;
-  onDeposit: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") => boolean;
+  onDeposit: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal", operationId: string) => boolean | Promise<boolean>;
 }) {
   const availableAccounts = movementKind === "deposit"
     ? accounts.filter((account) => (accountBalances[account.id] ?? 0) > 0)
@@ -21,26 +21,56 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
   const [accountId, setAccountId] = useState(availableAccounts[0]?.id ?? "");
   const [amount, setAmount] = useState("");
   const [name, setName] = useState(cashBox?.name ?? "");
+  const [operationId] = useState(() => crypto.randomUUID());
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const submittingRef = useRef(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     if (editing && cashBox) {
-      if (onRename(cashBox, name.trim())) onClose();
+      setSubmitting(true);
+      try {
+        if (await onRename(cashBox, name.trim())) onClose();
+      } finally {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
       return;
     }
     if (!cashBox) {
-      if (onCreate(String(form.get("cash-box-name") ?? "").trim())) onClose();
+      setSubmitting(true);
+      try {
+        if (await onCreate(String(form.get("cash-box-name") ?? "").trim(), operationId)) onClose();
+      } finally {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
       return;
     }
 
     const value = parseAmount(amount);
-    if (Number.isFinite(value) && onDeposit(cashBox, accountId, value, movementKind)) onClose();
+    if (!Number.isFinite(value) || value <= 0) {
+      setFormError("Informe um valor positivo válido.");
+      submittingRef.current = false;
+      return;
+    }
+    setFormError("");
+    setSubmitting(true);
+    try {
+      if (await onDeposit(cashBox, accountId, value, movementKind, operationId)) onClose();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   }
 
   return (
     <div className="modal-backdrop" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
+      if (!submitting && event.target === event.currentTarget) onClose();
     }}>
       <form className="transaction-modal cash-box-modal" onSubmit={submit}>
         <div className="modal-heading">
@@ -48,7 +78,7 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
             <span className="eyebrow">FLUXARY.IA · ORGANIZAÇÃO</span>
             <h2>{editing ? "Editar caixinha" : cashBox ? movementKind === "deposit" ? `Guardar na ${cashBox.name}` : `Retirar da ${cashBox.name}` : "Criar caixinha"}</h2>
           </div>
-          <button type="button" className="icon-button" aria-label="Fechar" onClick={onClose}><X size={18} /></button>
+          <button type="button" className="icon-button" aria-label="Fechar" onClick={onClose} disabled={submitting}><X size={18} /></button>
         </div>
         {editing && cashBox ? (
           <>
@@ -82,7 +112,10 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
                   />
                 </label>
                 <label className="amount-field">{movementKind === "deposit" ? "Valor do aporte" : "Valor da retirada"}
-                  <span className="amount-input-wrap"><span>R$</span><input name="cash-box-amount" type="text" inputMode="decimal" placeholder="0,00" required value={amount} onChange={(event) => setAmount(event.target.value)} /></span>
+                  <span className="amount-input-wrap"><span>R$</span><input name="cash-box-amount" type="text" inputMode="decimal" placeholder="0,00" required value={amount} onChange={(event) => {
+                    setAmount(event.target.value);
+                    setFormError("");
+                  }} /></span>
                 </label>
               </>
             ) : <p className="cash-box-form-copy">
@@ -99,9 +132,10 @@ export function CashBoxModal({ cashBox, accounts, accountBalances, onClose, onCr
             <label>Nome da caixinha<input name="cash-box-name" required maxLength={60} autoFocus placeholder="Ex.: Viagem, reserva, casa..." /></label>
           </>
         )}
+        {formError && <p className="cash-box-form-copy" role="alert">{formError}</p>}
         <div className="modal-actions">
-          <button type="button" className="button-secondary" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="button-primary" disabled={Boolean(cashBox && !editing && availableAccounts.length === 0)}>
+          <button type="button" className="button-secondary" onClick={onClose} disabled={submitting}>Cancelar</button>
+          <button type="submit" className="button-primary" disabled={submitting || Boolean(cashBox && !editing && availableAccounts.length === 0)}>
             {editing
               ? <><Check size={14} /> Salvar alterações</>
               : cashBox

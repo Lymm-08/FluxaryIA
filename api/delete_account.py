@@ -8,8 +8,10 @@ from api.account_deletion import (
     AccountDeletionError,
     authenticate_user,
     confirm_account_deletion,
+    confirm_account_deletion_code,
     create_deletion_request,
     load_config,
+    validate_deletion_code,
     validate_token,
 )
 
@@ -17,6 +19,11 @@ from api.account_deletion import (
 logger = logging.getLogger(__name__)
 MAX_BODY_BYTES = 4_096
 TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{40,64}$")
+REQUEST_ID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+CODE_PATTERN = re.compile(r"^[0-9]{6}$")
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
@@ -63,6 +70,16 @@ def _confirmation_token(payload: dict[str, Any]) -> str:
     return token
 
 
+def _confirmation_code(payload: dict[str, Any]) -> tuple[str, str]:
+    request_id = payload.get("request_id")
+    code = payload.get("code")
+    if not isinstance(request_id, str) or not REQUEST_ID_PATTERN.fullmatch(request_id):
+        raise AccountDeletionError(400, "A solicitação de confirmação é inválida.", "request_validation")
+    if not isinstance(code, str) or not CODE_PATTERN.fullmatch(code):
+        raise AccountDeletionError(400, "O código de confirmação é inválido.", "code_validation")
+    return request_id, code
+
+
 def _handle_post(handler: BaseHTTPRequestHandler) -> None:
     payload = _read_payload(handler)
     action = payload.get("action")
@@ -78,8 +95,21 @@ def _handle_post(handler: BaseHTTPRequestHandler) -> None:
         email = user.get("email")
         if not isinstance(email, str) or not email.strip():
             raise AccountDeletionError(400, "A conta não possui um e-mail para confirmação.", "email_validation")
-        create_deletion_request(config, user["id"], email)
-        _json_response(handler, 200, {"status": "email_sent"})
+        request_id = create_deletion_request(config, user["id"], email)
+        _json_response(handler, 200, {"status": "email_sent", "request_id": request_id})
+        return
+
+    if "request_id" in payload or "code" in payload:
+        request_id, code = _confirmation_code(payload)
+        if action == "validate":
+            result = validate_deletion_code(config, request_id, code)
+            state = result.get("status")
+            if state not in ("valid", "expired", "invalid", "used", "locked"):
+                raise AccountDeletionError(502, "Não foi possível validar o código.", "code_validation")
+            _json_response(handler, 200, {"status": state})
+            return
+        confirm_account_deletion_code(config, request_id, code)
+        _json_response(handler, 200, {"status": "deleted"})
         return
 
     token = _confirmation_token(payload)

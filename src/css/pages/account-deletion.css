@@ -49,6 +49,43 @@
   line-height: 1.7;
 }
 
+.account-deletion-code-form {
+  display: grid;
+  width: min(100%, 340px);
+  justify-items: stretch;
+  gap: 10px;
+  margin-top: 16px;
+  text-align: left;
+}
+
+.account-deletion-code-form label {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-deletion-code-form input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #dce7df;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: 700 24px "Manrope", sans-serif;
+  letter-spacing: 8px;
+  text-align: center;
+}
+
+.account-deletion-code-form .account-deletion-code-error {
+  margin: 0;
+  color: #b94b40;
+}
+
+.account-deletion-code-form .button-primary {
+  justify-self: center;
+  margin-top: 4px;
+}
+
 .account-deletion-back {
   margin-top: 16px;
   color: #28714e;

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CashBoxesPage } from "../src/pages/CashBoxesPage";
 import { DashboardPage } from "../src/pages/DashboardPage";
@@ -30,7 +30,7 @@ const existingDeposit: Transaction = {
 };
 
 describe("caixinhas", () => {
-  it("permite escolher a conta de origem e fazer um aporte", () => {
+  it("permite escolher a conta de origem e fazer um aporte", async () => {
     const onDeposit = vi.fn().mockReturnValue(true);
     render(
       <CashBoxesPage
@@ -53,7 +53,7 @@ describe("caixinhas", () => {
     fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "75,50" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar dinheiro" }));
 
-    expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 75.5, "deposit");
+    await waitFor(() => expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 75.5, "deposit", expect.any(String)));
   });
 
   describe("confirmação ao zerar os dados financeiros", () => {
@@ -79,7 +79,7 @@ describe("caixinhas", () => {
     });
   });
 
-  it("permite retirar dinheiro e escolher a conta de destino", () => {
+  it("permite retirar dinheiro e escolher a conta de destino", async () => {
     const onDeposit = vi.fn().mockReturnValue(true);
     render(
       <CashBoxesPage
@@ -101,7 +101,33 @@ describe("caixinhas", () => {
     fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "25,50" } });
     fireEvent.click(screen.getAllByRole("button", { name: "Retirar dinheiro" })[1]);
 
-    expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 25.5, "withdrawal");
+    await waitFor(() => expect(onDeposit).toHaveBeenCalledWith(cashBox, account.id, 25.5, "withdrawal", expect.any(String)));
+  });
+
+  it("reusa o identificador da operação ao repetir um aporte que falhou", async () => {
+    const onDeposit = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true);
+    render(
+      <CashBoxesPage
+        cashBoxes={[cashBox]}
+        transactions={[]}
+        accounts={[account]}
+        accountBalances={{ [account.id]: 500 }}
+        schemaReady
+        onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onDeposit={onDeposit}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Adicionar dinheiro" }));
+    fireEvent.change(screen.getByPlaceholderText("0,00"), { target: { value: "20,00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar dinheiro" }));
+    await waitFor(() => expect(onDeposit).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "Guardar dinheiro" }));
+    await waitFor(() => expect(onDeposit).toHaveBeenCalledTimes(2));
+
+    expect(onDeposit.mock.calls[0][4]).toBe(onDeposit.mock.calls[1][4]);
   });
 
   it("permite editar o nome e solicitar a exclusão da caixinha", () => {

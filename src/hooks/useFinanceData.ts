@@ -3,6 +3,7 @@ import { DEFAULT_CATEGORIES } from "../data/categories";
 import { supabase } from "../lib/supabase";
 import type { Account, BudgetPlan, CashBox, Category, CreditCardItem, CustomBank, DashboardWidget, FinancialGoal, Transaction } from "../types/finance";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { formatErrorDetails } from "../utils/errors";
 
 const DEFAULT_DASHBOARD_WIDGETS: DashboardWidget[] = ["cards", "goals"];
 
@@ -23,15 +24,20 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   const [loadError, setLoadError] = useState("");
   const [cashBoxSchemaReady, setCashBoxSchemaReady] = useState(true);
   const queues = useRef<Record<string, Promise<void>>>({});
+  const currentUserId = useRef(userId);
+  const syncedCashBoxMovementIds = useRef(new Set<string>());
+  const skipNextTransactionSync = useRef(false);
+  currentUserId.current = userId;
 
   useEffect(() => {
     if (!userId || !supabase) return;
     let active = true;
     setLoadError("");
+    syncedCashBoxMovementIds.current.clear();
     const client = supabase;
     void (async () => {
+      const transactionRows = await loadAllTransactions(client);
       const results = await Promise.all([
-        client.from("transactions").select("*").order("transaction_date", { ascending: false }),
         client.from("categories").select("*").order("name"),
         client.from("accounts").select("*").order("created_at", { ascending: false }),
         client.from("credit_cards").select("*").order("created_at", { ascending: false }),
@@ -42,14 +48,14 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         client.from("transactions").select("cash_box_id,cash_box_kind").limit(1),
         client.from("user_settings").select("*").maybeSingle(),
       ]);
-      const cashBoxSchemaMissing = Boolean(results[7].error && isMissingCashBoxTable(results[7].error))
-        || Boolean(results[8].error && isMissingCashBoxMovementColumns(results[8].error));
+      const cashBoxSchemaMissing = Boolean(results[6].error && isMissingCashBoxTable(results[6].error))
+        || Boolean(results[7].error && isMissingCashBoxMovementColumns(results[7].error));
       const failed = results.find((result, index) =>
-        result.error && !(cashBoxSchemaMissing && (index === 7 || index === 8)),
+        result.error && !(cashBoxSchemaMissing && (index === 6 || index === 7)),
       );
       if (failed?.error) throw failed.error;
       if (!active) return;
-      const [transactionRows, categoryRows, accountRows, cardRows, bankRows, budgetRows, goalRows, cashBoxRows, , settingsRows] = results;
+      const [categoryRows, accountRows, cardRows, bankRows, budgetRows, goalRows, cashBoxRows, , settingsRows] = results;
       setCashBoxSchemaReady(!cashBoxSchemaMissing);
       const savedCategories = (categoryRows.data ?? []).map((row): Category => ({
         id: row.id, name: row.name, type: row.type, color: row.color, emoji: row.emoji,
@@ -108,21 +114,28 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       setLoadedUserId(userId);
     })().catch((reason: unknown) => {
       if (!active) return;
-      const message = reason instanceof Error ? reason.message : "Não foi possível carregar os dados da conta.";
+      const message = formatErrorDetails(reason, "Não foi possível carregar os dados da conta.");
       setLoadError(message);
       onError(`Falha ao carregar os dados da nuvem: ${message}`);
     });
     return () => { active = false; };
   }, [userId, onError, setAccounts, setCards, setCategories, setCashBoxes, setCustomBanks, setGoals, setPlans, setTransactions]);
 
-  const enqueueSync = useCallback((key: string, operation: () => Promise<void>) => {
+  const schedule = useCallback((key: string, operation: () => Promise<void>) => {
     const previous = queues.current[key] ?? Promise.resolve();
-    const next = previous.catch(() => undefined).then(operation).catch((reason: unknown) => {
-      const detail = reason instanceof Error ? reason.message : "erro desconhecido";
+    const next = previous.catch(() => undefined).then(operation);
+    queues.current[key] = next.then(() => undefined, () => undefined);
+    return next;
+  }, []);
+
+  const enqueueSync = useCallback((key: string, operation: () => Promise<void>) => {
+    void schedule(key, operation).catch((reason: unknown) => {
+      const detail = formatErrorDetails(reason, "erro desconhecido");
       if (key === "movimentações" && isMissingSettledColumn(reason)) {
         onError(
           "A movimentação não foi salva na nuvem porque falta a coluna is_settled no Supabase. "
-          + "Execute supabase/migrations/20261103010000_future_transactions_settlement.sql no SQL Editor e tente novamente.",
+          + "Execute supabase/migrations/20261103010000_future_transactions_settlement.sql no SQL Editor e tente novamente. "
+          + `Detalhes: ${detail}`,
         );
         return;
       }
@@ -132,63 +145,42 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       ) {
         onError(
           "A movimentação não foi salva na nuvem porque falta a coluna account_id no Supabase. "
-          + "Execute supabase/migrations/20261103000000_transactions_account_source.sql no SQL Editor e tente novamente.",
+          + "Execute supabase/migrations/20261103000000_transactions_account_source.sql no SQL Editor e tente novamente. "
+          + `Detalhes: ${detail}`,
         );
         return;
       }
       if (key === "movimentações" && isMissingCashBoxMovementColumns(reason)) {
         onError(
           "A movimentação não foi salva na nuvem porque faltam as colunas de Caixinhas em transactions. "
-          + "Execute supabase/migrations/20261103030000_cash_box_withdrawals.sql no SQL Editor.",
+          + "Execute supabase/migrations/20261103030000_cash_box_withdrawals.sql no SQL Editor. "
+          + `Detalhes: ${detail}`,
         );
         return;
       }
       onError(`Não foi possível sincronizar ${key} com a nuvem: ${detail}`);
     });
-    queues.current[key] = next;
-  }, [onError]);
+  }, [onError, schedule]);
 
   const cloudReady = Boolean(userId && loadedUserId === userId && !loadError && supabase);
   useEffect(() => {
     if (!cloudReady || !userId || !supabase) return;
+    if (skipNextTransactionSync.current) {
+      skipNextTransactionSync.current = false;
+      return;
+    }
     const client = supabase;
-    const rows = transactions.map((item) => ({
-      id: item.id,
-      user_id: userId,
-      description: item.description,
-      category: item.category,
-      category_id: item.categoryId ?? null,
-      transaction_date: item.transaction_date,
-      amount: item.amount,
-      type: item.type,
-      is_settled: item.isSettled ?? true,
-      account_id: item.accountId ?? null,
-      credit_card_id: item.creditCardId ?? null,
-      credit_card_kind: item.creditCardKind ?? null,
-      ...(cashBoxSchemaReady ? {
-        cash_box_id: item.cashBoxId ?? null,
-        cash_box_kind: item.cashBoxKind ?? null,
-      } : {}),
-      installment_group_id: item.installmentGroupId ?? null,
-      installment_number: item.installmentNumber ?? null,
-      installment_count: item.installmentCount ?? null,
-    }));
+    const rows = transactions
+      .filter((item) => !syncedCashBoxMovementIds.current.has(item.id))
+      .map((item) => transactionRow(item, userId, cashBoxSchemaReady));
     enqueueSync("movimentações", async () => {
       await queues.current["categorias"];
       await queues.current["contas"];
       await queues.current["cartões"];
       await queues.current["caixinhas"];
-      await syncRows(
-        rows,
-        async () => (await client.from("transactions").upsert(rows, { onConflict: "user_id,id" })).error,
-        async () => {
-          const result = await client.from("transactions").select("id");
-          return { ids: result.data?.map((row) => row.id) ?? [], error: result.error };
-        },
-        async (ids) => (await client.from("transactions").delete().in("id", ids)).error,
-      );
+      await upsertRows(rows, async () => (await client.from("transactions").upsert(rows, { onConflict: "user_id,id" })).error);
     });
-  }, [cashBoxSchemaReady, cloudReady, enqueueSync, transactions, userId]);
+  }, [cashBoxSchemaReady, cloudReady, enqueueSync, transactions, userId, syncedCashBoxMovementIds]);
 
   useEffect(() => {
     if (!cloudReady || !userId || !supabase) return;
@@ -280,18 +272,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   }, [cloudReady, enqueueSync, goals, userId]);
 
   useEffect(() => {
-    if (!cloudReady || !cashBoxSchemaReady || !userId || !supabase) return;
-    const client = supabase;
-    const rows = cashBoxes.map((item) => ({ id: item.id, user_id: userId, name: item.name }));
-    enqueueSync("caixinhas", () => syncRows(
-      rows,
-      async () => (await client.from("cash_boxes").upsert(rows, { onConflict: "user_id,id" })).error,
-      async () => { const result = await client.from("cash_boxes").select("id"); return { ids: result.data?.map((row) => row.id) ?? [], error: result.error }; },
-      async (ids) => (await client.from("cash_boxes").delete().in("id", ids)).error,
-    ));
-  }, [cashBoxes, cashBoxSchemaReady, cloudReady, enqueueSync, userId]);
-
-  useEffect(() => {
     if (!cloudReady || !userId || !supabase) return;
     const client = supabase;
     enqueueSync("preferências", async () => {
@@ -302,12 +282,83 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     });
   }, [cloudReady, darkMode, dashboardWidgets, enqueueSync, monthlyBudget, userId]);
 
+  const saveCashBox = useCallback(async (cashBox: CashBox) => {
+    if (!cloudReady || !userId || !supabase || !cashBoxSchemaReady) {
+      throw new Error("As caixinhas ainda não estão prontas para sincronização.");
+    }
+    const client = supabase;
+    await schedule("caixinhas", async () => {
+      const { error } = await client.from("cash_boxes").upsert(
+        { id: cashBox.id, user_id: userId, name: cashBox.name },
+        { onConflict: "user_id,id" },
+      );
+      if (error) throw error;
+      if (currentUserId.current === userId) {
+        setCashBoxes((current) => upsert(current, cashBox));
+      }
+    });
+  }, [cashBoxSchemaReady, cloudReady, schedule, userId]);
+
+  const deleteCashBox = useCallback(async (cashBoxId: string) => {
+    if (!cloudReady || !userId || !supabase || !cashBoxSchemaReady) {
+      throw new Error("As caixinhas ainda não estão prontas para sincronização.");
+    }
+    const client = supabase;
+    await schedule("caixinhas", async () => {
+      const { error } = await client.from("cash_boxes").delete().eq("id", cashBoxId);
+      if (error) throw error;
+      if (currentUserId.current === userId) {
+        setCashBoxes((current) => current.filter((cashBox) => cashBox.id !== cashBoxId));
+      }
+    });
+  }, [cashBoxSchemaReady, cloudReady, schedule, userId]);
+
+  const saveCashBoxMovement = useCallback(async (transaction: Transaction) => {
+    if (!cloudReady || !userId || !supabase || !cashBoxSchemaReady) {
+      throw new Error("As caixinhas ainda não estão prontas para sincronização.");
+    }
+    validateCashBoxMovement(transaction);
+    const client = supabase;
+    await schedule("movimentações", async () => {
+      await queues.current["caixinhas"];
+      const { error } = await client.from("transactions").upsert(
+        transactionRow(transaction, userId),
+        { onConflict: "user_id,id" },
+      );
+      if (error) throw error;
+      if (currentUserId.current === userId) {
+        syncedCashBoxMovementIds.current.add(transaction.id);
+        skipNextTransactionSync.current = true;
+        setTransactions((current) => upsert(current, transaction));
+      }
+    });
+  }, [cashBoxSchemaReady, cloudReady, schedule, userId]);
+
+  const deleteTransactions = useCallback(async (transactionIds: string[]) => {
+    const ids = [...new Set(transactionIds)];
+    if (!ids.length) return;
+    if (!cloudReady || !userId || !supabase) {
+      throw new Error("As movimentações ainda não estão prontas para sincronização.");
+    }
+    const client = supabase;
+    await schedule("movimentações", async () => {
+      const { error } = await client.from("transactions").delete().in("id", ids);
+      if (error) throw error;
+      if (currentUserId.current === userId) {
+        ids.forEach((id) => syncedCashBoxMovementIds.current.delete(id));
+        skipNextTransactionSync.current = true;
+        setTransactions((current) => current.filter((transaction) => !ids.includes(transaction.id)));
+      }
+    });
+  }, [cloudReady, schedule, userId]);
+
   return {
     transactions, setTransactions, categories, setCategories, accounts, setAccounts, cards, setCards,
     customBanks, setCustomBanks, plans, setPlans, goals, setGoals, cashBoxes, setCashBoxes,
     monthlyBudget, setMonthlyBudget,
     darkMode, setDarkMode, dashboardWidgets, setDashboardWidgets,
     cashBoxSchemaReady, loading: Boolean(userId && loadedUserId !== userId && !loadError), loadError,
+    saveCashBox, deleteCashBox, saveCashBoxMovement, deleteTransactions,
   };
 }
 
@@ -366,4 +417,88 @@ async function syncRows(
     const error = await removeIds(staleIds);
     if (error) throw error;
   }
+}
+
+async function upsertRows(
+  rows: { id: string }[],
+  upsert: () => Promise<PostgrestError | null>,
+) {
+  if (!rows.length) return;
+  const error = await upsert();
+  if (error) throw error;
+}
+
+async function loadAllTransactions(client: NonNullable<typeof supabase>) {
+  const pageSize = 500;
+  const rows: Awaited<ReturnType<typeof fetchTransactionPage>> = [];
+  for (let from = 0; ; ) {
+    const page = await fetchTransactionPage(client, from, from + pageSize - 1);
+    if (!page.length) return { data: rows, error: null };
+    rows.push(...page);
+    from += page.length;
+  }
+}
+
+async function fetchTransactionPage(
+  client: NonNullable<typeof supabase>,
+  from: number,
+  to: number,
+) {
+  const { data, error } = await client.from("transactions")
+    .select("*")
+    .order("transaction_date", { ascending: false })
+    .order("id", { ascending: true })
+    .range(from, to);
+  if (error) throw error;
+  return data ?? [];
+}
+
+function transactionRow(transaction: Transaction, userId: string, includeCashBoxColumns = true) {
+  return {
+    id: transaction.id,
+    user_id: userId,
+    description: transaction.description,
+    category: transaction.category,
+    category_id: transaction.categoryId ?? null,
+    transaction_date: transaction.transaction_date,
+    amount: transaction.amount,
+    type: transaction.type,
+    is_settled: transaction.isSettled ?? true,
+    account_id: transaction.accountId ?? null,
+    credit_card_id: transaction.creditCardId ?? null,
+    credit_card_kind: transaction.creditCardKind ?? null,
+    ...(includeCashBoxColumns ? {
+      cash_box_id: transaction.cashBoxId ?? null,
+      cash_box_kind: transaction.cashBoxKind ?? null,
+    } : {}),
+    installment_group_id: transaction.installmentGroupId ?? null,
+    installment_number: transaction.installmentNumber ?? null,
+    installment_count: transaction.installmentCount ?? null,
+  };
+}
+
+function validateCashBoxMovement(transaction: Transaction) {
+  if (
+    !transaction.id
+    || !transaction.cashBoxId
+    || !transaction.accountId
+    || !transaction.cashBoxKind
+    || transaction.isSettled === false
+    || !Number.isFinite(transaction.amount)
+    || transaction.amount <= 0
+    || Math.round(transaction.amount * 100) !== transaction.amount * 100
+    || transaction.amount > 999999999999.99
+    || (transaction.cashBoxKind === "deposit" && transaction.type !== "expense")
+    || (transaction.cashBoxKind === "withdrawal" && transaction.type !== "income")
+    || transaction.creditCardId
+    || transaction.creditCardKind
+  ) {
+    throw new Error("Os dados da movimentação da caixinha são inválidos.");
+  }
+}
+
+function upsert<T extends { id: string }>(items: T[], next: T) {
+  return items.some((item) => item.id === next.id)
+    ? items.map((item) => item.id === next.id ? next : item)
+    : [next, ...items];
 }

@@ -11,10 +11,10 @@ export function CashBoxesPage({ cashBoxes, transactions, accounts, accountBalanc
   accounts: Account[];
   accountBalances: Record<string, number>;
   schemaReady: boolean;
-  onCreate: (name: string) => boolean;
-  onRename: (cashBox: CashBox, name: string) => boolean;
+  onCreate: (name: string, operationId: string) => boolean | Promise<boolean>;
+  onRename: (cashBox: CashBox, name: string) => boolean | Promise<boolean>;
   onDelete: (cashBox: CashBox) => void;
-  onDeposit: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal") => boolean;
+  onDeposit: (cashBox: CashBox, accountId: string, amount: number, kind: "deposit" | "withdrawal", operationId: string) => boolean | Promise<boolean>;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [cashBoxToFund, setCashBoxToFund] = useState<CashBox | null>(null);
