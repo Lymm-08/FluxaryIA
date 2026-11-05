@@ -295,8 +295,8 @@ export function ChatPage({ userId }: { userId: string }) {
             <div className="chat-assistant-profile">
               <MascotAvatar />
               <div className="chat-assistant-details">
-                <h1>Assistente Fluxary</h1>
-                <span><i aria-hidden="true" /> Disponível para conversar</span>
+                <h1>Felix</h1>
+                <span><i aria-hidden="true" /> Assistente financeiro pessoal · Disponível</span>
               </div>
             </div>
             <button className="chat-new-button" type="button" onClick={startNewConversation} disabled={sending}>
@@ -309,7 +309,7 @@ export function ChatPage({ userId }: { userId: string }) {
               <div className="chat-welcome">
                 <MascotAvatar welcome />
                 <span className="chat-welcome-kicker">SEU ASSISTENTE FINANCEIRO PESSOAL</span>
-                <h2>Olá! Como posso ajudar com suas finanças hoje?</h2>
+                <h2>Olá! Eu sou o Felix, seu assistente financeiro pessoal. Como posso ajudar hoje?</h2>
                 <p>Estou aqui para ajudar você a entender seus gastos, planejar metas e tomar decisões com mais confiança.</p>
                 <div className="chat-suggestions">
                   {suggestedQuestions.map((question) => (
@@ -326,7 +326,7 @@ export function ChatPage({ userId }: { userId: string }) {
               <div className="chat-thinking" role="status">
                 <MascotAvatar />
                 <div className="chat-thinking-bubble"><span /><span /><span /></div>
-                <span className="visually-hidden">Assistente Fluxary está escrevendo</span>
+                <span className="visually-hidden">Felix está escrevendo</span>
               </div>
             )}
           </div>

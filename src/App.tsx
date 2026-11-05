@@ -12,6 +12,7 @@ import { useFinanceData } from "./hooks/useFinanceData";
 import { AuthPage } from "./auth/AuthPage";
 import { useAuth } from "./auth/AuthProvider";
 import { SettingsPage } from "./pages/SettingsPage";
+import { AccountDeletionPage } from "./pages/AccountDeletionPage";
 import type {
   Account, BudgetPlan, CashBox, Category, CreditCardItem, FinanceNotification, FinancialGoal, Transaction, TransactionType,
 } from "./types/finance";
@@ -28,6 +29,15 @@ type ConfirmationRequest = { title: string; message: string; confirmLabel: strin
 // Decide entre conta autenticada, recuperação de senha e modo local.
 function App() {
   const auth = useAuth();
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  const accountDeletionToken = hash.get("accountDeletionToken");
+  if (search.get("accountDeletionComplete") === "1") {
+    return <AccountDeletionPage token="" completed />;
+  }
+  if (accountDeletionToken !== null) {
+    return <AccountDeletionPage token={accountDeletionToken} />;
+  }
 
   if (auth.loading) return <div className="screen-state">Carregando sua conta...</div>;
   if (auth.passwordRecovery) {

@@ -20,6 +20,8 @@ class AIProviderTests(unittest.TestCase):
         self.assertEqual(config.provider, "gemini")
         self.assertEqual(config.model, "gemini-3.5-flash-lite")
         self.assertEqual(config.api_key, "test-key-not-used-for-network")
+        self.assertIn("Seu nome é Felix", SYSTEM_INSTRUCTIONS)
+        self.assertIn("assistente financeiro pessoal do Fluxary", SYSTEM_INSTRUCTIONS)
 
     def test_provider_can_be_changed_with_backend_configuration(self):
         config = get_provider_config({

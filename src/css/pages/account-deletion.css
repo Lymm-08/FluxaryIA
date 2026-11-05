@@ -1,0 +1,97 @@
+/* Estados da confirmação de exclusão enviados por e-mail. */
+.account-deletion-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: #f5f8f6;
+}
+
+.account-deletion-card {
+  display: grid;
+  width: min(100%, 520px);
+  justify-items: center;
+  padding: clamp(24px, 6vw, 42px);
+  text-align: center;
+}
+
+.account-deletion-icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 17px;
+  background: #e8f5ed;
+  color: #21835c;
+}
+
+.account-deletion-icon-danger {
+  background: #fff0ed;
+  color: #b94b40;
+}
+
+.account-deletion-icon-success {
+  background: #e8f5ed;
+  color: #21835c;
+}
+
+.account-deletion-card h1 {
+  margin: 19px 0 8px;
+  color: var(--ink);
+  font: 800 21px "Manrope", sans-serif;
+}
+
+.account-deletion-card p {
+  max-width: 430px;
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.account-deletion-back {
+  margin-top: 16px;
+  color: #28714e;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.account-deletion-back:hover {
+  text-decoration: underline;
+}
+
+.account-deletion-card .button-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  margin-top: 18px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #b94b40;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.account-deletion-card .button-danger:hover {
+  background: #a63c32;
+}
+
+.account-deletion-spinner {
+  animation: account-deletion-spin 1s linear infinite;
+}
+
+@keyframes account-deletion-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 700px) {
+  .settings-delete-account .button-danger,
+  .account-deletion-card .button-danger {
+    width: 100%;
+  }
+}

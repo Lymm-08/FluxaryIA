@@ -96,7 +96,7 @@ describe("Chat Fluxary", () => {
     fireEvent.keyDown(composer, { key: "Enter", code: "Enter" });
 
     expect(await screen.findByText("Qual meu saldo?")).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("Assistente Fluxary está escrevendo");
+    expect(screen.getByRole("status").textContent).toContain("Felix está escrevendo");
     expect((composer as HTMLTextAreaElement).value).toBe("");
     expect(screen.queryByText("Resposta do assistente.")).toBeNull();
 
@@ -163,6 +163,8 @@ describe("Chat Fluxary", () => {
       .toBe("Como estão meus gastos neste mês?");
 
     await user.click(screen.getByRole("button", { name: /Nova conversa/ }));
-    expect(screen.getByRole("heading", { name: "Olá! Como posso ajudar com suas finanças hoje?" })).toBeTruthy();
+    expect(screen.getByRole("heading", {
+      name: "Olá! Eu sou o Felix, seu assistente financeiro pessoal. Como posso ajudar hoje?",
+    })).toBeTruthy();
   });
 });

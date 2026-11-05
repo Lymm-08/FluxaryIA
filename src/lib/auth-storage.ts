@@ -33,6 +33,12 @@ export function setRememberSessionPreference(remember: boolean) {
   window.localStorage.setItem(rememberPreferenceKey, String(remember));
 }
 
+export function clearAuthSession() {
+  for (const storage of [window.localStorage, window.sessionStorage]) {
+    for (const key of getAuthTokenKeys(storage)) storage.removeItem(key);
+  }
+}
+
 function readRememberPreference() {
   const storedPreference = window.localStorage.getItem(rememberPreferenceKey);
   if (storedPreference !== null) return storedPreference === "true";

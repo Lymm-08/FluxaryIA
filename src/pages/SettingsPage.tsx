@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { AlertCircle, CircleHelp, KeyRound, Moon, RotateCcw, ShieldCheck, Sun } from "lucide-react";
+import { AlertCircle, CircleHelp, KeyRound, Moon, RotateCcw, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import type { DashboardWidget } from "../types/finance";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { requestAccountDeletion } from "../services/accountDeletion";
 
 type SettingsPageProps = {
   email: string | null;
@@ -17,6 +19,10 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deleteRequestOpen, setDeleteRequestOpen] = useState(false);
+  const [deletionRequestSent, setDeletionRequestSent] = useState(false);
+  const [deletionRequestMessage, setDeletionRequestMessage] = useState("");
+  const [deletionRequestError, setDeletionRequestError] = useState("");
 
   async function requestPasswordReset() {
     setMessage("");
@@ -28,6 +34,22 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
       setMessage("Enviamos um código de recuperação para seu e-mail.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível enviar o código de recuperação.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitDeletionRequest() {
+    setDeleteRequestOpen(false);
+    setDeletionRequestMessage("");
+    setDeletionRequestError("");
+    setBusy(true);
+    try {
+      await requestAccountDeletion();
+      setDeletionRequestSent(true);
+      setDeletionRequestMessage("Enviamos um link de confirmação para seu e-mail. A conta ainda não foi excluída.");
+    } catch (reason) {
+      setDeletionRequestError(reason instanceof Error ? reason.message : "Não foi possível solicitar a exclusão da conta.");
     } finally {
       setBusy(false);
     }
@@ -78,6 +100,24 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
               <button className="button-primary" type="button" onClick={() => void requestPasswordReset()} disabled={busy}>
                 <KeyRound size={14} />{busy ? "Enviando..." : "Redefinir senha por e-mail"}
               </button>
+              <div className="settings-delete-account">
+                <h3>Excluir minha conta</h3>
+                <p>A solicitação envia um link ao seu e-mail. Sua conta só será excluída depois de confirmar pelo link e aceitar a confirmação final.</p>
+                {deletionRequestMessage && (
+                  <div className="auth-feedback auth-feedback-success" role="status">
+                    <ShieldCheck size={16} /><span>{deletionRequestMessage}</span>
+                  </div>
+                )}
+                {deletionRequestError && <div className="auth-feedback auth-feedback-error" role="alert"><AlertCircle size={16} /><span>{deletionRequestError}</span></div>}
+                <button
+                  className="button-danger"
+                  type="button"
+                  onClick={() => setDeleteRequestOpen(true)}
+                  disabled={busy || deletionRequestSent}
+                >
+                  <Trash2 size={14} />{busy ? "Enviando solicitação..." : "Excluir minha conta"}
+                </button>
+              </div>
             </div>
           ) : <div className="settings-local-note">A conta atual não possui um endereço de e-mail associado.</div>}
         </article>
@@ -111,6 +151,16 @@ export function SettingsPage({ email, darkMode, onToggleDarkMode, dashboardWidge
           </div>
         </article>
       </div>
+      {deleteRequestOpen && (
+        <ConfirmDialog
+          title="Solicitar exclusão da conta?"
+          message="A exclusão é permanente e removerá sua conta e os dados associados. Primeiro enviaremos um link para seu e-mail; nada será excluído até você abrir o link e confirmar novamente."
+          confirmLabel="Enviar link de confirmação"
+          danger
+          onConfirm={() => void submitDeletionRequest()}
+          onCancel={() => setDeleteRequestOpen(false)}
+        />
+      )}
     </section>
   );
 }

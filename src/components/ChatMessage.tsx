@@ -92,7 +92,7 @@ export function ChatMessage({ message }: { message: ChatMessageData }) {
         <span className="chat-message-avatar chat-user-avatar" aria-hidden="true">Você</span>
       )}
       <div className="chat-message-content">
-        <div className="chat-message-author">{assistant ? "Assistente Fluxary" : "Você"}</div>
+        <div className="chat-message-author">{assistant ? "Felix" : "Você"}</div>
         <div className="chat-message-text">
           {assistant ? renderFormattedText(message.content) : <p>{message.content}</p>}
         </div>
