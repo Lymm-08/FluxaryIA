@@ -817,13 +817,9 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
   }
 
   async function deleteCashBox(cashBox: CashBox) {
-    if (finance.transactions.some((item) => item.cashBoxId === cashBox.id)) {
-      setError("Esta caixinha tem movimentações vinculadas. Mantenha-a para preservar o histórico financeiro.");
-      return;
-    }
     if (!await askConfirmation({
       title: "Excluir caixinha?",
-      message: `Deseja excluir “${cashBox.name}”? Esta ação não pode ser desfeita.`,
+      message: `Deseja excluir “${cashBox.name}”? A caixinha será removida, mas os aportes e as retiradas permanecerão no histórico com a identificação original.`,
       confirmLabel: "Excluir caixinha",
       danger: true,
     })) return;

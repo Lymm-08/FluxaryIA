@@ -14,6 +14,8 @@ export type Transaction = {
   creditCardId?: string;
   creditCardKind?: "purchase" | "payment";
   cashBoxId?: string;
+  cashBoxIdSnapshot?: string;
+  cashBoxNameSnapshot?: string;
   cashBoxKind?: "deposit" | "withdrawal";
   installmentGroupId?: string;
   installmentNumber?: number;

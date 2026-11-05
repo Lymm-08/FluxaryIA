@@ -11,11 +11,17 @@ type OwnedRow = { id: string; user_id: string; created_at: string; updated_at: s
 export type TransactionRow = OwnedRow & {
   description: string; category: string; category_id: string | null; transaction_date: string; amount: number; type: "income" | "expense"; is_settled: boolean;
   account_id: string | null; credit_card_id: string | null; credit_card_kind: "purchase" | "payment" | null;
-  cash_box_id: string | null; cash_box_kind: "deposit" | "withdrawal" | null;
+  cash_box_id: string | null; cash_box_id_snapshot: string | null; cash_box_name_snapshot: string | null;
+  cash_box_kind: "deposit" | "withdrawal" | null;
   installment_group_id: string | null; installment_number: number | null; installment_count: number | null;
 };
-type TransactionInsert = Omit<TransactionRow, "created_at" | "updated_at" | "cash_box_id" | "cash_box_kind"> & {
+type TransactionInsert = Omit<
+  TransactionRow,
+  "created_at" | "updated_at" | "cash_box_id" | "cash_box_kind" | "cash_box_id_snapshot" | "cash_box_name_snapshot"
+> & {
   cash_box_id?: string | null;
+  cash_box_id_snapshot?: string | null;
+  cash_box_name_snapshot?: string | null;
   cash_box_kind?: "deposit" | "withdrawal" | null;
 };
 export type CategoryRow = OwnedRow & {
@@ -60,6 +66,7 @@ export type Database = {
     Views: Record<string, never>;
     Functions: {
       consume_fluxary_ai_request: { Args: Record<string, never>; Returns: boolean };
+      delete_cash_box_preserving_history: { Args: { p_cash_box_id: string }; Returns: undefined };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

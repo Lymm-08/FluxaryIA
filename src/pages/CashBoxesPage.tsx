@@ -31,7 +31,7 @@ export function CashBoxesPage({ cashBoxes, transactions, accounts, accountBalanc
       {!schemaReady ? (
         <div className="panel collection-empty cash-box-schema-notice" role="status">
           <strong>Ative as caixinhas no Supabase</strong>
-          <p>Execute <code>supabase/migrations/20261103020000_cash_boxes.sql</code> e depois <code>supabase/migrations/20261103030000_cash_box_withdrawals.sql</code> no SQL Editor do seu Supabase existente.</p>
+          <p>Execute <code>supabase/migrations/20261103020000_cash_boxes.sql</code>, <code>supabase/migrations/20261103030000_cash_box_withdrawals.sql</code> e <code>supabase/migrations/20261105183000_cash_box_history_preservation.sql</code> no SQL Editor do seu Supabase existente.</p>
         </div>
       ) : cashBoxes.length === 0 ? (
         <div className="panel collection-empty">

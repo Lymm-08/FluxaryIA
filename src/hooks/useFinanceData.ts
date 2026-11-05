@@ -26,7 +26,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   const queues = useRef<Record<string, Promise<void>>>({});
   const currentUserId = useRef(userId);
   const syncedCashBoxMovementIds = useRef(new Set<string>());
-  const skipNextTransactionSync = useRef(false);
   currentUserId.current = userId;
 
   useEffect(() => {
@@ -45,7 +44,9 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         client.from("budgets").select("*").order("category"),
         client.from("financial_goals").select("*").order("created_at", { ascending: false }),
         client.from("cash_boxes").select("*").order("created_at", { ascending: false }),
-        client.from("transactions").select("cash_box_id,cash_box_kind").limit(1),
+        client.from("transactions")
+          .select("cash_box_id,cash_box_kind,cash_box_id_snapshot,cash_box_name_snapshot")
+          .limit(1),
         client.from("user_settings").select("*").maybeSingle(),
       ]);
       const cashBoxSchemaMissing = Boolean(results[6].error && isMissingCashBoxTable(results[6].error))
@@ -79,7 +80,10 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         ...(row.account_id ? { accountId: row.account_id } : {}),
         ...(row.credit_card_id ? { creditCardId: row.credit_card_id } : {}),
         ...(row.credit_card_kind ? { creditCardKind: row.credit_card_kind } : {}),
-        ...(row.cash_box_id && row.cash_box_kind ? { cashBoxId: row.cash_box_id, cashBoxKind: row.cash_box_kind } : {}),
+        ...(row.cash_box_id ? { cashBoxId: row.cash_box_id } : {}),
+        ...(row.cash_box_id_snapshot ? { cashBoxIdSnapshot: row.cash_box_id_snapshot } : {}),
+        ...(row.cash_box_name_snapshot ? { cashBoxNameSnapshot: row.cash_box_name_snapshot } : {}),
+        ...(row.cash_box_kind ? { cashBoxKind: row.cash_box_kind } : {}),
         ...(row.installment_group_id ? { installmentGroupId: row.installment_group_id } : {}),
         ...(row.installment_number ? { installmentNumber: row.installment_number } : {}),
         ...(row.installment_count ? { installmentCount: row.installment_count } : {}),
@@ -165,10 +169,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   const cloudReady = Boolean(userId && loadedUserId === userId && !loadError && supabase);
   useEffect(() => {
     if (!cloudReady || !userId || !supabase) return;
-    if (skipNextTransactionSync.current) {
-      skipNextTransactionSync.current = false;
-      return;
-    }
     const client = supabase;
     const rows = transactions
       .filter((item) => !syncedCashBoxMovementIds.current.has(item.id))
@@ -305,13 +305,28 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     }
     const client = supabase;
     await schedule("caixinhas", async () => {
-      const { error } = await client.from("cash_boxes").delete().eq("id", cashBoxId);
+      const { error } = await client.rpc("delete_cash_box_preserving_history", {
+        p_cash_box_id: cashBoxId,
+      });
       if (error) throw error;
       if (currentUserId.current === userId) {
+        const deletedCashBox = cashBoxes.find((cashBox) => cashBox.id === cashBoxId);
+        const affectedTransactions = transactions.filter((transaction) => transaction.cashBoxId === cashBoxId);
+        affectedTransactions.forEach((transaction) => syncedCashBoxMovementIds.current.add(transaction.id));
+        if (affectedTransactions.length) {
+          setTransactions((current) => current.map((transaction) => transaction.cashBoxId === cashBoxId
+            ? {
+              ...transaction,
+              cashBoxId: undefined,
+              cashBoxIdSnapshot: cashBoxId,
+              cashBoxNameSnapshot: deletedCashBox?.name ?? transaction.cashBoxNameSnapshot,
+            }
+            : transaction));
+        }
         setCashBoxes((current) => current.filter((cashBox) => cashBox.id !== cashBoxId));
       }
     });
-  }, [cashBoxSchemaReady, cloudReady, schedule, userId]);
+  }, [cashBoxSchemaReady, cashBoxes, cloudReady, schedule, transactions, userId]);
 
   const saveCashBoxMovement = useCallback(async (transaction: Transaction) => {
     if (!cloudReady || !userId || !supabase || !cashBoxSchemaReady) {
@@ -328,7 +343,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       if (error) throw error;
       if (currentUserId.current === userId) {
         syncedCashBoxMovementIds.current.add(transaction.id);
-        skipNextTransactionSync.current = true;
         setTransactions((current) => upsert(current, transaction));
       }
     });
@@ -346,7 +360,6 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       if (error) throw error;
       if (currentUserId.current === userId) {
         ids.forEach((id) => syncedCashBoxMovementIds.current.delete(id));
-        skipNextTransactionSync.current = true;
         setTransactions((current) => current.filter((transaction) => !ids.includes(transaction.id)));
       }
     });
@@ -396,7 +409,12 @@ function isMissingCashBoxMovementColumns(reason: unknown): boolean {
   const error = reason as { code?: unknown; message?: unknown };
   return (error.code === "PGRST204" || error.code === "42703")
     && typeof error.message === "string"
-    && (error.message.includes("cash_box_id") || error.message.includes("cash_box_kind"));
+    && (
+      error.message.includes("cash_box_id")
+      || error.message.includes("cash_box_kind")
+      || error.message.includes("cash_box_id_snapshot")
+      || error.message.includes("cash_box_name_snapshot")
+    );
 }
 
 async function syncRows(
@@ -469,6 +487,8 @@ function transactionRow(transaction: Transaction, userId: string, includeCashBox
     credit_card_kind: transaction.creditCardKind ?? null,
     ...(includeCashBoxColumns ? {
       cash_box_id: transaction.cashBoxId ?? null,
+      cash_box_id_snapshot: transaction.cashBoxIdSnapshot ?? null,
+      cash_box_name_snapshot: transaction.cashBoxNameSnapshot ?? null,
       cash_box_kind: transaction.cashBoxKind ?? null,
     } : {}),
     installment_group_id: transaction.installmentGroupId ?? null,

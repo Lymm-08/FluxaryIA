@@ -11,10 +11,11 @@ const backend = vi.hoisted(() => ({
   nextWriteError: null as Record<string, string> | null,
   commitBeforeNextWriteError: false,
   from: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("../src/lib/supabase", () => ({
-  supabase: { from: backend.from },
+  supabase: { from: backend.from, rpc: backend.rpc },
 }));
 
 const account = {
@@ -144,6 +145,7 @@ beforeEach(() => {
     accounts: [{ ...account }],
     cash_boxes: [{ ...cashBox }],
     transactions: [],
+    cash_box_deposits: [],
     categories: [],
     credit_cards: [],
     custom_banks: [],
@@ -155,6 +157,47 @@ beforeEach(() => {
   backend.nextWriteError = null;
   backend.commitBeforeNextWriteError = false;
   backend.from.mockImplementation((table: string) => createBuilder(table));
+  backend.rpc.mockImplementation((functionName: string, args: { p_cash_box_id: string }) => {
+    backend.operations.push({ table: functionName, kind: "rpc" });
+    if (functionName !== "delete_cash_box_preserving_history") {
+      return Promise.resolve({ error: { code: "42883", message: "function not found" } });
+    }
+    if (!backend.authenticatedUserId) {
+      return Promise.resolve({ error: { code: "42501", message: "Authentication required" } });
+    }
+    const boxIndex = backend.tables.cash_boxes.findIndex((row) =>
+      row.user_id === backend.authenticatedUserId && row.id === args.p_cash_box_id,
+    );
+    if (boxIndex < 0) {
+      return Promise.resolve({ error: { code: "P0002", message: "Cash box not found or not owned" } });
+    }
+    const error = backend.nextWriteError;
+    backend.nextWriteError = null;
+    if (error) return Promise.resolve({ error });
+
+    const name = backend.tables.cash_boxes[boxIndex].name;
+    backend.tables.transactions = backend.tables.transactions.map((row) => row.user_id === backend.authenticatedUserId
+      && row.cash_box_id === args.p_cash_box_id
+      ? {
+        ...row,
+        cash_box_id_snapshot: row.cash_box_id,
+        cash_box_name_snapshot: name,
+        cash_box_id: null,
+      }
+      : row);
+    backend.tables.cash_box_deposits = backend.tables.cash_box_deposits.map((row) =>
+      row.user_id === backend.authenticatedUserId && row.cash_box_id === args.p_cash_box_id
+        ? {
+          ...row,
+          cash_box_id_snapshot: row.cash_box_id,
+          cash_box_name_snapshot: name,
+          cash_box_id: null,
+        }
+        : row,
+    );
+    backend.tables.cash_boxes.splice(boxIndex, 1);
+    return Promise.resolve({ data: null, error: null });
+  });
 });
 
 afterEach(() => {
@@ -162,6 +205,156 @@ afterEach(() => {
 });
 
 describe("useFinanceData cash box persistence", () => {
+  it("deletes a cash box without movements", async () => {
+    const hook = await renderFinanceHook();
+
+    await act(async () => {
+      await hook.result.current.deleteCashBox(cashBox.id);
+    });
+
+    expect(backend.tables.cash_boxes).toEqual([]);
+    expect(backend.tables.transactions).toEqual([]);
+    expect(backend.operations).toContainEqual({
+      table: "delete_cash_box_preserving_history",
+      kind: "rpc",
+    });
+    hook.unmount();
+  });
+
+  it("deletes a cash box with a deposit while preserving its historical values", async () => {
+    const hook = await renderFinanceHook();
+    await act(async () => {
+      await hook.result.current.saveCashBoxMovement(deposit());
+    });
+    const accountBalanceBeforeDelete = getAccountBalance(hook.result.current.accounts[0], hook.result.current.transactions);
+
+    await act(async () => {
+      await hook.result.current.deleteCashBox(cashBox.id);
+    });
+
+    expect(backend.tables.cash_boxes).toEqual([]);
+    expect(backend.tables.transactions).toHaveLength(1);
+    expect(backend.tables.transactions[0]).toMatchObject({
+      id: "deposit-1",
+      amount: 20,
+      type: "expense",
+      description: "Aporte: Reserva",
+      transaction_date: "2026-11-05",
+      cash_box_id: null,
+      cash_box_id_snapshot: cashBox.id,
+      cash_box_name_snapshot: cashBox.name,
+    });
+    expect(getAccountBalance(hook.result.current.accounts[0], hook.result.current.transactions)).toBe(accountBalanceBeforeDelete);
+
+    hook.unmount();
+    const reloaded = await renderFinanceHook();
+    expect(reloaded.result.current.cashBoxes).toEqual([]);
+    expect(reloaded.result.current.transactions[0]).not.toHaveProperty("cashBoxId");
+    expect(reloaded.result.current.transactions[0]).toMatchObject({
+      cashBoxIdSnapshot: cashBox.id,
+      cashBoxNameSnapshot: cashBox.name,
+      cashBoxKind: "deposit",
+      amount: 20,
+    });
+    expect(getAccountBalance(reloaded.result.current.accounts[0], reloaded.result.current.transactions)).toBe(accountBalanceBeforeDelete);
+    reloaded.unmount();
+  });
+
+  it("deletes a cash box with both deposit and withdrawal, preserving transaction and legacy histories", async () => {
+    const hook = await renderFinanceHook();
+    const withdrawal: Transaction = {
+      ...deposit("withdrawal-1"),
+      description: "Retirada: Reserva",
+      amount: 5,
+      type: "income",
+      cashBoxKind: "withdrawal",
+    };
+    await act(async () => {
+      await hook.result.current.saveCashBoxMovement(deposit());
+      await hook.result.current.saveCashBoxMovement(withdrawal);
+    });
+    backend.tables.cash_box_deposits.push({
+      id: "legacy-deposit",
+      user_id: "user-1",
+      cash_box_id: cashBox.id,
+      account_id: account.id,
+      amount: 10,
+      direction: "deposit",
+    });
+    const accountBalanceBeforeDelete = getAccountBalance(hook.result.current.accounts[0], hook.result.current.transactions);
+
+    await act(async () => {
+      await hook.result.current.deleteCashBox(cashBox.id);
+    });
+
+    expect(backend.tables.transactions).toHaveLength(2);
+    expect(backend.tables.transactions.map((row) => ({
+      id: row.id,
+      amount: row.amount,
+      type: row.type,
+      description: row.description,
+      transaction_date: row.transaction_date,
+      cash_box_id: row.cash_box_id,
+      cash_box_id_snapshot: row.cash_box_id_snapshot,
+      cash_box_name_snapshot: row.cash_box_name_snapshot,
+    }))).toEqual([
+      {
+        id: "deposit-1",
+        amount: 20,
+        type: "expense",
+        description: "Aporte: Reserva",
+        transaction_date: "2026-11-05",
+        cash_box_id: null,
+        cash_box_id_snapshot: cashBox.id,
+        cash_box_name_snapshot: "Reserva",
+      },
+      {
+        id: "withdrawal-1",
+        amount: 5,
+        type: "income",
+        description: "Retirada: Reserva",
+        transaction_date: "2026-11-05",
+        cash_box_id: null,
+        cash_box_id_snapshot: cashBox.id,
+        cash_box_name_snapshot: "Reserva",
+      },
+    ]);
+    expect(backend.tables.cash_box_deposits).toHaveLength(1);
+    expect(backend.tables.cash_box_deposits[0]).toMatchObject({
+      id: "legacy-deposit",
+      cash_box_id: null,
+      cash_box_id_snapshot: cashBox.id,
+      cash_box_name_snapshot: "Reserva",
+    });
+    expect(getAccountBalance(hook.result.current.accounts[0], hook.result.current.transactions)).toBe(accountBalanceBeforeDelete);
+    hook.unmount();
+
+    const reloaded = await renderFinanceHook();
+    expect(reloaded.result.current.transactions).toHaveLength(2);
+    expect(getCashBoxBalance(cashBox.id, reloaded.result.current.transactions)).toBe(0);
+    expect(reloaded.result.current.transactions.map((row) => row.cashBoxNameSnapshot)).toEqual(["Reserva", "Reserva"]);
+    expect(getAccountBalance(reloaded.result.current.accounts[0], reloaded.result.current.transactions)).toBe(accountBalanceBeforeDelete);
+    reloaded.unmount();
+  });
+
+  it("rolls back the entire cash box deletion when the RPC fails", async () => {
+    const hook = await renderFinanceHook();
+    await act(async () => {
+      await hook.result.current.saveCashBoxMovement(deposit());
+    });
+    backend.nextWriteError = { code: "08006", message: "network connection lost" };
+
+    await expect(act(async () => {
+      await hook.result.current.deleteCashBox(cashBox.id);
+    })).rejects.toMatchObject({ code: "08006" });
+
+    expect(backend.tables.cash_boxes).toHaveLength(1);
+    expect(backend.tables.transactions[0]).toMatchObject({ cash_box_id: cashBox.id });
+    expect(hook.result.current.cashBoxes).toEqual([{ id: cashBox.id, name: cashBox.name }]);
+    expect(hook.result.current.transactions[0].cashBoxId).toBe(cashBox.id);
+    hook.unmount();
+  });
+
   it("retries creation with one ID, saves edits, and deletes only after the remote operation succeeds", async () => {
     const hook = await renderFinanceHook();
     const savedCashBox = { id: "stable-box-id", name: "Viagem" };
@@ -266,13 +459,15 @@ describe("useFinanceData cash box persistence", () => {
     hook.unmount();
   });
 
-  it("lets RLS reject writes whose owner differs from the authenticated user", async () => {
-    const hook = await renderFinanceHook("user-2");
+  it("does not allow the authenticated user to delete another user's cash box", async () => {
+    backend.tables.cash_boxes.push({ id: "foreign-box", name: "Private", user_id: "user-2" });
+    const hook = await renderFinanceHook("user-1");
+
     await expect(act(async () => {
-      await hook.result.current.saveCashBox({ id: "not-owned", name: "Other user" });
-    })).rejects.toMatchObject({ code: "42501" });
-    expect(hook.result.current.cashBoxes).toEqual([{ id: cashBox.id, name: cashBox.name }]);
-    expect(backend.tables.cash_boxes).not.toContainEqual(expect.objectContaining({ id: "not-owned" }));
+      await hook.result.current.deleteCashBox("foreign-box");
+    })).rejects.toMatchObject({ code: "P0002" });
+
+    expect(backend.tables.cash_boxes).toContainEqual({ id: "foreign-box", name: "Private", user_id: "user-2" });
     hook.unmount();
   });
 
