@@ -85,12 +85,8 @@ export function AccountDeletionPage({
         `${window.location.pathname}?accountDeletionComplete=1`,
       );
       try {
-        if (supabase) {
-          const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
-          if (signOutError) clearAuthSession();
-        } else {
-          clearAuthSession();
-        }
+        if (supabase) await supabase.auth.signOut({ scope: "local" });
+        clearAuthSession();
       } catch {
         clearAuthSession();
       }

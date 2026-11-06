@@ -1,7 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
-import { setRememberSessionPreference } from "../lib/auth-storage";
+import {
+  clearRememberedAuthSession,
+  rememberCurrentAuthSession,
+  setRememberSessionPreference,
+} from "../lib/auth-storage";
 
 type AuthContextValue = {
   configured: boolean;
@@ -23,7 +27,7 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Mantém uma sessão autenticada compartilhada entre login e área financeira.
+// Mantém a sessão desta aba disponível entre login e área financeira.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(supabaseConfigured);
@@ -38,9 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let active = true;
+    let authEventVersion = 0;
+    const initialAuthEventVersion = authEventVersion;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session: Session | null) => {
       if (!active) return;
+      authEventVersion += 1;
       setUser(session?.user ?? null);
+      if (session) rememberCurrentAuthSession();
       if (event === "PASSWORD_RECOVERY") {
         setPasswordRecovery(true);
         setRecoveryStep("password");
@@ -56,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(({ data, error }) => {
       if (!active) return;
       if (error) console.error("Não foi possível restaurar a sessão Supabase.", error);
-      setUser(data.session?.user ?? null);
+      if (authEventVersion === initialAuthEventVersion) setUser(data.session?.user ?? null);
       setLoading(false);
     });
 
@@ -78,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRememberSessionPreference(rememberSession);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+      rememberCurrentAuthSession();
     },
     async signUp(name, email, password) {
       if (!supabase) throw new Error("Configure a URL e a chave pública do Supabase para habilitar o cadastro.");
@@ -130,8 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     async signOut() {
       if (!supabase) return;
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) throw error;
+      clearRememberedAuthSession();
     },
     finishPasswordRecovery() {
       setPasswordRecovery(false);

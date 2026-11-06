@@ -12,6 +12,8 @@ Aplicação responsiva de organização financeira pessoal, em português brasil
 
 O acesso é exclusivo para contas autenticadas. Sem Supabase configurado, o login permanece indisponível e nenhuma funcionalidade financeira fica acessível.
 
+Cada aba do navegador mantém uma sessão Supabase isolada, inclusive ao duplicar uma aba. “Lembrar de mim” guarda a sessão e registra o identificador da aba para que uma aba fechada possa recuperar a sessão ao ser reaberta. A recuperação coordena as abas com Web Locks ou, quando indisponível, com leases transacionais no IndexedDB; eventos de `storage` complementam a detecção quando `BroadcastChannel` não existe. Se houver várias sessões lembradas e fechadas, cada nova aba recupera uma sessão inativa por vez; sessões que ainda estão em abas abertas nunca são reutilizadas. Sair remove somente a sessão lembrada da aba atual. Após a atualização, sessões salvas pelo formato anterior podem exigir um novo login na primeira recuperação.
+
 ## Configuração do Supabase
 
 Para um projeto Supabase novo, execute uma única vez `BANCO_DE_DADOS_COMPLETO.sql` no SQL Editor. Esse script consolidado cria as tabelas, índices, restrições, triggers, permissões e políticas RLS sem exigir a execução dos arquivos da pasta `migrations`. `TESTES_BANCO_DE_DADOS.sql` contém verificações pós-instalação e um teste RLS transacional.

@@ -101,6 +101,7 @@ describe("Confirmação de exclusão de conta", () => {
     await waitFor(() => expect(deletionServices.confirmAccountDeletion).toHaveBeenCalledOnce());
     expect(await screen.findByRole("heading", { name: "Conta excluída" })).toBeTruthy();
     expect(deletionServices.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(deletionServices.clearAuthSession).toHaveBeenCalledOnce();
     expect(window.location.search).toContain("accountDeletionComplete=1");
   });
 

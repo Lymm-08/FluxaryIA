@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
-import { authStorage } from "./auth-storage";
+import { authStorage, authStorageKey } from "./auth-storage";
 
 // O navegador usa somente a chave pública anon/publishable; nunca coloque service_role aqui.
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
@@ -21,7 +21,13 @@ const hasValidSupabaseConfig = Boolean(
 
 export const supabase = hasValidSupabaseConfig && supabaseUrl && supabasePublishableKey
   ? createClient<Database>(supabaseUrl, supabasePublishableKey, {
-      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true, storage: authStorage },
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        storage: authStorage,
+        storageKey: authStorageKey,
+      },
     })
   : null;
 export const supabaseConfigured = supabase !== null;
