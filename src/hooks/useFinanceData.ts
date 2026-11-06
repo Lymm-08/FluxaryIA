@@ -23,6 +23,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
   const [cashBoxSchemaReady, setCashBoxSchemaReady] = useState(true);
+  const [accountHistorySchemaReady, setAccountHistorySchemaReady] = useState(true);
   const queues = useRef<Record<string, Promise<void>>>({});
   const currentUserId = useRef(userId);
   const syncedCashBoxMovementIds = useRef(new Set<string>());
@@ -47,17 +48,24 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         client.from("transactions")
           .select("cash_box_id,cash_box_kind,cash_box_id_snapshot,cash_box_name_snapshot")
           .limit(1),
+        client.from("transactions").select("account_id_snapshot,account_name_snapshot").limit(1),
         client.from("user_settings").select("*").maybeSingle(),
       ]);
       const cashBoxSchemaMissing = Boolean(results[6].error && isMissingCashBoxTable(results[6].error))
         || Boolean(results[7].error && isMissingCashBoxMovementColumns(results[7].error));
+      const accountHistorySchemaMissing = Boolean(
+        results[8].error && isMissingAccountHistoryColumns(results[8].error),
+      );
       const failed = results.find((result, index) =>
-        result.error && !(cashBoxSchemaMissing && (index === 6 || index === 7)),
+        result.error
+        && !(cashBoxSchemaMissing && (index === 6 || index === 7))
+        && !(accountHistorySchemaMissing && index === 8),
       );
       if (failed?.error) throw failed.error;
       if (!active) return;
-      const [categoryRows, accountRows, cardRows, bankRows, budgetRows, goalRows, cashBoxRows, , settingsRows] = results;
+      const [categoryRows, accountRows, cardRows, bankRows, budgetRows, goalRows, cashBoxRows, , , settingsRows] = results;
       setCashBoxSchemaReady(!cashBoxSchemaMissing);
+      setAccountHistorySchemaReady(!accountHistorySchemaMissing);
       const savedCategories = (categoryRows.data ?? []).map((row): Category => ({
         id: row.id, name: row.name, type: row.type, color: row.color, emoji: row.emoji,
       }));
@@ -78,6 +86,8 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         transaction_date: row.transaction_date, amount: Number(row.amount), type: row.type,
         isSettled: row.is_settled ?? true,
         ...(row.account_id ? { accountId: row.account_id } : {}),
+        ...(row.account_id_snapshot ? { accountIdSnapshot: row.account_id_snapshot } : {}),
+        ...(row.account_name_snapshot ? { accountNameSnapshot: row.account_name_snapshot } : {}),
         ...(row.credit_card_id ? { creditCardId: row.credit_card_id } : {}),
         ...(row.credit_card_kind ? { creditCardKind: row.credit_card_kind } : {}),
         ...(row.cash_box_id ? { cashBoxId: row.cash_box_id } : {}),
@@ -172,7 +182,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     const client = supabase;
     const rows = transactions
       .filter((item) => !syncedCashBoxMovementIds.current.has(item.id))
-      .map((item) => transactionRow(item, userId, cashBoxSchemaReady));
+      .map((item) => transactionRow(item, userId, cashBoxSchemaReady, accountHistorySchemaReady));
     enqueueSync("movimentações", async () => {
       await queues.current["categorias"];
       await queues.current["contas"];
@@ -180,7 +190,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
       await queues.current["caixinhas"];
       await upsertRows(rows, async () => (await client.from("transactions").upsert(rows, { onConflict: "user_id,id" })).error);
     });
-  }, [cashBoxSchemaReady, cloudReady, enqueueSync, transactions, userId, syncedCashBoxMovementIds]);
+  }, [accountHistorySchemaReady, cashBoxSchemaReady, cloudReady, enqueueSync, transactions, userId, syncedCashBoxMovementIds]);
 
   useEffect(() => {
     if (!cloudReady || !userId || !supabase) return;
@@ -201,11 +211,9 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     if (!cloudReady || !userId || !supabase) return;
     const client = supabase;
     const rows = accounts.map((item) => ({ id: item.id, user_id: userId, name: item.name, institution: item.institution, bank_id: item.bankId ?? "", balance: item.balance }));
-    enqueueSync("contas", () => syncRows(
+    enqueueSync("contas", () => upsertRows(
       rows,
       async () => (await client.from("accounts").upsert(rows, { onConflict: "user_id,id" })).error,
-      async () => { const result = await client.from("accounts").select("id"); return { ids: result.data?.map((row) => row.id) ?? [], error: result.error }; },
-      async (ids) => (await client.from("accounts").delete().in("id", ids)).error,
     ));
   }, [accounts, cloudReady, enqueueSync, userId]);
 
@@ -328,6 +336,35 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     });
   }, [cashBoxSchemaReady, cashBoxes, cloudReady, schedule, transactions, userId]);
 
+  const deleteAccount = useCallback(async (accountId: string) => {
+    if (!cloudReady || !userId || !supabase || !accountHistorySchemaReady) {
+      throw new Error("A preservação do histórico de contas ainda não está pronta. Aplique a migration 20261106090000_account_history_preservation.sql no Supabase.");
+    }
+    const client = supabase;
+    await schedule("movimentações", async () => {
+      await queues.current["contas"];
+      const { error } = await client.rpc("delete_account_preserving_history", {
+        p_account_id: accountId,
+      });
+      if (error) throw error;
+      if (currentUserId.current === userId) {
+        const deletedAccount = accounts.find((account) => account.id === accountId);
+        const affectedTransactions = transactions.filter((transaction) => transaction.accountId === accountId);
+        if (affectedTransactions.length) {
+          setTransactions((current) => current.map((transaction) => transaction.accountId === accountId
+            ? {
+              ...transaction,
+              accountId: undefined,
+              accountIdSnapshot: accountId,
+              accountNameSnapshot: deletedAccount?.name ?? transaction.accountNameSnapshot,
+            }
+            : transaction));
+        }
+        setAccounts((current) => current.filter((account) => account.id !== accountId));
+      }
+    });
+  }, [accountHistorySchemaReady, accounts, cloudReady, schedule, transactions, userId]);
+
   const saveCashBoxMovement = useCallback(async (transaction: Transaction) => {
     if (!cloudReady || !userId || !supabase || !cashBoxSchemaReady) {
       throw new Error("As caixinhas ainda não estão prontas para sincronização.");
@@ -337,7 +374,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     await schedule("movimentações", async () => {
       await queues.current["caixinhas"];
       const { error } = await client.from("transactions").upsert(
-        transactionRow(transaction, userId),
+        transactionRow(transaction, userId, cashBoxSchemaReady, accountHistorySchemaReady),
         { onConflict: "user_id,id" },
       );
       if (error) throw error;
@@ -346,7 +383,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
         setTransactions((current) => upsert(current, transaction));
       }
     });
-  }, [cashBoxSchemaReady, cloudReady, schedule, userId]);
+  }, [accountHistorySchemaReady, cashBoxSchemaReady, cloudReady, schedule, userId]);
 
   const deleteTransactions = useCallback(async (transactionIds: string[]) => {
     const ids = [...new Set(transactionIds)];
@@ -371,7 +408,7 @@ export function useFinanceData(onError: (message: string) => void, userId: strin
     monthlyBudget, setMonthlyBudget,
     darkMode, setDarkMode, dashboardWidgets, setDashboardWidgets,
     cashBoxSchemaReady, loading: Boolean(userId && loadedUserId !== userId && !loadError), loadError,
-    saveCashBox, deleteCashBox, saveCashBoxMovement, deleteTransactions,
+    saveCashBox, deleteCashBox, deleteAccount, saveCashBoxMovement, deleteTransactions,
   };
 }
 
@@ -415,6 +452,14 @@ function isMissingCashBoxMovementColumns(reason: unknown): boolean {
       || error.message.includes("cash_box_id_snapshot")
       || error.message.includes("cash_box_name_snapshot")
     );
+}
+
+function isMissingAccountHistoryColumns(reason: unknown): boolean {
+  if (!reason || typeof reason !== "object") return false;
+  const error = reason as { code?: unknown; message?: unknown };
+  return (error.code === "PGRST204" || error.code === "42703")
+    && typeof error.message === "string"
+    && (error.message.includes("account_id_snapshot") || error.message.includes("account_name_snapshot"));
 }
 
 async function syncRows(
@@ -471,7 +516,12 @@ async function fetchTransactionPage(
   return data ?? [];
 }
 
-function transactionRow(transaction: Transaction, userId: string, includeCashBoxColumns = true) {
+function transactionRow(
+  transaction: Transaction,
+  userId: string,
+  includeCashBoxColumns = true,
+  includeAccountHistoryColumns = true,
+) {
   return {
     id: transaction.id,
     user_id: userId,
@@ -483,6 +533,10 @@ function transactionRow(transaction: Transaction, userId: string, includeCashBox
     type: transaction.type,
     is_settled: transaction.isSettled ?? true,
     account_id: transaction.accountId ?? null,
+    ...(includeAccountHistoryColumns ? {
+      account_id_snapshot: transaction.accountIdSnapshot ?? null,
+      account_name_snapshot: transaction.accountNameSnapshot ?? null,
+    } : {}),
     credit_card_id: transaction.creditCardId ?? null,
     credit_card_kind: transaction.creditCardKind ?? null,
     ...(includeCashBoxColumns ? {

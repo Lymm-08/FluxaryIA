@@ -37,7 +37,7 @@ export function TransactionDetailsModal({ transaction, account, card, showValues
         </div>
         <dl className="transaction-details-list">
           <div><dt><CalendarDays size={14} /> Data</dt><dd>{formatShortDate(transaction.transaction_date)}</dd></div>
-          <div><dt><Wallet size={14} /> Conta</dt><dd>{account?.name ?? (transaction.creditCardKind === "purchase" ? "Cartão de crédito" : "Não vinculada")}</dd></div>
+          <div><dt><Wallet size={14} /> Conta</dt><dd>{account?.name ?? transaction.accountNameSnapshot ?? (transaction.creditCardKind === "purchase" ? "Cartão de crédito" : "Não vinculada")}</dd></div>
           {card && <div><dt><CreditCard size={14} /> Cartão</dt><dd>{card.issuer}</dd></div>}
           <div><dt>Status</dt><dd>{isPending ? "Pendente" : "Realizada"}</dd></div>
         </dl>

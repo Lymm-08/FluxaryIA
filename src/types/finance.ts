@@ -11,6 +11,8 @@ export type Transaction = {
   type: TransactionType;
   isSettled?: boolean;
   accountId?: string;
+  accountIdSnapshot?: string;
+  accountNameSnapshot?: string;
   creditCardId?: string;
   creditCardKind?: "purchase" | "payment";
   cashBoxId?: string;

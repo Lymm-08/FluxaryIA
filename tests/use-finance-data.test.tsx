@@ -157,45 +157,73 @@ beforeEach(() => {
   backend.nextWriteError = null;
   backend.commitBeforeNextWriteError = false;
   backend.from.mockImplementation((table: string) => createBuilder(table));
-  backend.rpc.mockImplementation((functionName: string, args: { p_cash_box_id: string }) => {
+  backend.rpc.mockImplementation((functionName: string, args: Record<string, string>) => {
     backend.operations.push({ table: functionName, kind: "rpc" });
-    if (functionName !== "delete_cash_box_preserving_history") {
+    if (
+      functionName !== "delete_cash_box_preserving_history"
+      && functionName !== "delete_account_preserving_history"
+    ) {
       return Promise.resolve({ error: { code: "42883", message: "function not found" } });
     }
     if (!backend.authenticatedUserId) {
       return Promise.resolve({ error: { code: "42501", message: "Authentication required" } });
     }
-    const boxIndex = backend.tables.cash_boxes.findIndex((row) =>
-      row.user_id === backend.authenticatedUserId && row.id === args.p_cash_box_id,
+    const isAccount = functionName === "delete_account_preserving_history";
+    const table = isAccount ? "accounts" : "cash_boxes";
+    const id = isAccount ? args.p_account_id : args.p_cash_box_id;
+    const index = backend.tables[table].findIndex((row) =>
+      row.user_id === backend.authenticatedUserId && row.id === id,
     );
-    if (boxIndex < 0) {
-      return Promise.resolve({ error: { code: "P0002", message: "Cash box not found or not owned" } });
+    if (index < 0) {
+      return Promise.resolve({ error: { code: "P0002", message: `${isAccount ? "Account" : "Cash box"} not found or not owned` } });
     }
     const error = backend.nextWriteError;
     backend.nextWriteError = null;
     if (error) return Promise.resolve({ error });
 
-    const name = backend.tables.cash_boxes[boxIndex].name;
-    backend.tables.transactions = backend.tables.transactions.map((row) => row.user_id === backend.authenticatedUserId
-      && row.cash_box_id === args.p_cash_box_id
-      ? {
+    const name = backend.tables[table][index].name;
+    if (isAccount) {
+      backend.tables.transactions = backend.tables.transactions.map((row) =>
+        row.user_id === backend.authenticatedUserId && row.account_id === id
+          ? {
+            ...row,
+            account_id_snapshot: row.account_id,
+            account_name_snapshot: name,
+            account_id: null,
+          }
+          : row);
+      backend.tables.cash_box_deposits = backend.tables.cash_box_deposits.map((row) =>
+        row.user_id === backend.authenticatedUserId && row.account_id === id
+          ? {
+            ...row,
+            account_id_snapshot: row.account_id,
+            account_name_snapshot: name,
+            account_id: null,
+          }
+          : row,
+      );
+    } else {
+      backend.tables.transactions = backend.tables.transactions.map((row) => row.user_id === backend.authenticatedUserId
+        && row.cash_box_id === id
+        ? {
         ...row,
         cash_box_id_snapshot: row.cash_box_id,
         cash_box_name_snapshot: name,
         cash_box_id: null,
       }
       : row);
-    backend.tables.cash_box_deposits = backend.tables.cash_box_deposits.map((row) =>
-      row.user_id === backend.authenticatedUserId && row.cash_box_id === args.p_cash_box_id
-        ? {
-          ...row,
-          cash_box_id_snapshot: row.cash_box_id,
-          cash_box_name_snapshot: name,
-          cash_box_id: null,
-        }
-        : row,
-    );
-    backend.tables.cash_boxes.splice(boxIndex, 1);
+      backend.tables.cash_box_deposits = backend.tables.cash_box_deposits.map((row) =>
+        row.user_id === backend.authenticatedUserId && row.cash_box_id === id
+          ? {
+            ...row,
+            cash_box_id_snapshot: row.cash_box_id,
+            cash_box_name_snapshot: name,
+            cash_box_id: null,
+          }
+          : row,
+      );
+    }
+    backend.tables[table].splice(index, 1);
     return Promise.resolve({ data: null, error: null });
   });
 });
@@ -205,6 +233,303 @@ afterEach(() => {
 });
 
 describe("useFinanceData cash box persistence", () => {
+  it("deletes an account without movements", async () => {
+    const hook = await renderFinanceHook();
+
+    await act(async () => {
+      await hook.result.current.deleteAccount(account.id);
+    });
+
+    expect(backend.tables.accounts).toEqual([]);
+    expect(backend.tables.transactions).toEqual([]);
+    expect(hook.result.current.accounts).toEqual([]);
+    hook.unmount();
+  });
+
+  it("preserves an income transaction and its original values after account deletion and reload", async () => {
+    const hook = await renderFinanceHook();
+    const income: Transaction = {
+      id: "income-1",
+      description: "Salário",
+      category: "Salário",
+      transaction_date: "2026-10-12",
+      amount: 1250,
+      type: "income",
+      accountId: account.id,
+    };
+    act(() => hook.result.current.setTransactions([income]));
+    await waitFor(() => expect(backend.tables.transactions).toHaveLength(1));
+
+    await act(async () => {
+      await hook.result.current.deleteAccount(account.id);
+    });
+
+    expect(backend.tables.accounts).toEqual([]);
+    expect(backend.tables.transactions[0]).toMatchObject({
+      id: income.id,
+      amount: income.amount,
+      type: income.type,
+      description: income.description,
+      transaction_date: income.transaction_date,
+      account_id: null,
+      account_id_snapshot: account.id,
+      account_name_snapshot: account.name,
+    });
+    expect(hook.result.current.transactions[0]).toMatchObject({
+      ...income,
+      accountId: undefined,
+      accountIdSnapshot: account.id,
+      accountNameSnapshot: account.name,
+    });
+    hook.unmount();
+
+    const reloaded = await renderFinanceHook();
+    expect(reloaded.result.current.accounts).toEqual([]);
+    expect(reloaded.result.current.transactions[0]).not.toHaveProperty("accountId");
+    expect(reloaded.result.current.transactions[0]).toMatchObject({
+      id: income.id,
+      amount: income.amount,
+      type: income.type,
+      description: income.description,
+      transaction_date: income.transaction_date,
+      accountIdSnapshot: account.id,
+      accountNameSnapshot: account.name,
+    });
+    reloaded.unmount();
+  });
+
+  it("preserves an expense without changing the balance of another account", async () => {
+    const otherAccount = { ...account, id: "account-2", name: "Poupança", balance: 800 };
+    backend.tables.accounts.push({ ...otherAccount });
+    const hook = await renderFinanceHook();
+    const expense: Transaction = {
+      id: "expense-1",
+      description: "Mercado",
+      category: "Alimentação",
+      transaction_date: "2026-11-05",
+      amount: 75.5,
+      type: "expense",
+      accountId: account.id,
+    };
+    act(() => hook.result.current.setTransactions([expense]));
+    await waitFor(() => expect(backend.tables.transactions).toHaveLength(1));
+    const otherAccountBalance = getAccountBalance(otherAccount, hook.result.current.transactions);
+
+    await act(async () => {
+      await hook.result.current.deleteAccount(account.id);
+    });
+
+    expect(backend.tables.transactions[0]).toMatchObject({
+      id: expense.id,
+      amount: expense.amount,
+      type: expense.type,
+      description: expense.description,
+      transaction_date: expense.transaction_date,
+      account_id: null,
+      account_id_snapshot: account.id,
+      account_name_snapshot: account.name,
+    });
+    expect(hook.result.current.accounts).toEqual([expect.objectContaining({ id: otherAccount.id })]);
+    expect(getAccountBalance(hook.result.current.accounts[0], hook.result.current.transactions)).toBe(otherAccountBalance);
+    hook.unmount();
+  });
+
+  it("preserves an income after deleting its bank account", async () => {
+    const hook = await renderFinanceHook();
+    const income: Transaction = {
+      id: "income-1",
+      description: "Pagamento",
+      category: "Salário",
+      transaction_date: "2026-11-04",
+      amount: 2400,
+      type: "income",
+      accountId: account.id,
+    };
+    act(() => hook.result.current.setTransactions([income]));
+    await waitFor(() => expect(backend.tables.transactions).toHaveLength(1));
+
+    await act(async () => {
+      await hook.result.current.deleteAccount(account.id);
+    });
+
+    expect(backend.tables.accounts).toEqual([]);
+    expect(backend.tables.transactions[0]).toMatchObject({
+      id: income.id,
+      amount: income.amount,
+      type: "income",
+      description: income.description,
+      transaction_date: income.transaction_date,
+      account_id: null,
+      account_id_snapshot: account.id,
+      account_name_snapshot: account.name,
+    });
+    hook.unmount();
+  });
+
+  it("deletes an account with a zero balance and both income and expense history", async () => {
+    const zeroBalanceAccount = { ...account, balance: 0 };
+    backend.tables.accounts = [{ ...zeroBalanceAccount }];
+    const hook = await renderFinanceHook();
+    const transactions: Transaction[] = [
+      {
+        id: "zero-income",
+        description: "Reembolso",
+        category: "Outros",
+        transaction_date: "2026-11-02",
+        amount: 40,
+        type: "income",
+        accountId: account.id,
+      },
+      {
+        id: "zero-expense",
+        description: "Tarifa",
+        category: "Outros",
+        transaction_date: "2026-11-03",
+        amount: 40,
+        type: "expense",
+        accountId: account.id,
+      },
+    ];
+    act(() => hook.result.current.setTransactions(transactions));
+    await waitFor(() => expect(backend.tables.transactions).toHaveLength(2));
+    expect(getAccountBalance(zeroBalanceAccount, hook.result.current.transactions)).toBe(0);
+
+    await act(async () => {
+      await hook.result.current.deleteAccount(account.id);
+    });
+
+    expect(backend.tables.accounts).toEqual([]);
+    expect(backend.tables.transactions).toHaveLength(2);
+    expect(backend.tables.transactions.map((row) => row.id)).toEqual(["zero-income", "zero-expense"]);
+    expect(backend.tables.transactions.every((row) =>
+      row.account_id === null
+      && row.account_id_snapshot === account.id
+      && row.account_name_snapshot === account.name,
+    )).toBe(true);
+    hook.unmount();
+  });
+
+  it("preserves linked cash box history in both history models when its bank account is removed", async () => {
+    const hook = await renderFinanceHook();
+    const cashBoxDeposit = deposit("account-cash-box-deposit");
+    await act(async () => {
+      await hook.result.current.saveCashBoxMovement(cashBoxDeposit);
+    });
+    backend.tables.cash_box_deposits.push({
+      id: "legacy-account-movement",
+      user_id: "user-1",
+      cash_box_id: cashBox.id,
+      account_id: account.id,
+      amount: 20,
+      direction: "deposit",
+    });
+
+    await act(async () => {
+      await hook.result.current.deleteAccount(account.id);
+    });
+
+    expect(backend.tables.transactions[0]).toMatchObject({
+      account_id: null,
+      account_id_snapshot: account.id,
+      account_name_snapshot: account.name,
+      cash_box_id: cashBox.id,
+      cash_box_kind: "deposit",
+    });
+    expect(backend.tables.cash_box_deposits[0]).toMatchObject({
+      account_id: null,
+      account_id_snapshot: account.id,
+      account_name_snapshot: account.name,
+      cash_box_id: cashBox.id,
+    });
+    expect(getCashBoxBalance(cashBox.id, hook.result.current.transactions)).toBe(20);
+    hook.unmount();
+  });
+
+  it("keeps all account and historical rows when the RPC fails", async () => {
+    const hook = await renderFinanceHook();
+    const transaction = {
+      id: "rollback-income",
+      description: "Salário",
+      category: "Salário",
+      transaction_date: "2026-11-05",
+      amount: 200,
+      type: "income" as const,
+      accountId: account.id,
+    };
+    act(() => hook.result.current.setTransactions([transaction]));
+    await waitFor(() => expect(backend.tables.transactions).toHaveLength(1));
+    backend.nextWriteError = { code: "08006", message: "injected database failure" };
+
+    await expect(act(async () => {
+      await hook.result.current.deleteAccount(account.id);
+    })).rejects.toMatchObject({ code: "08006" });
+
+    expect(backend.tables.accounts).toHaveLength(1);
+    expect(backend.tables.transactions[0]).toMatchObject({ account_id: account.id });
+    expect(backend.tables.transactions[0].account_id_snapshot).toBeNull();
+    expect(hook.result.current.accounts).toHaveLength(1);
+    expect(hook.result.current.transactions[0]).toMatchObject(transaction);
+    hook.unmount();
+  });
+
+  it("does not allow deleting another user's bank account", async () => {
+    backend.tables.accounts.push({ ...account, id: "foreign-account", user_id: "user-2" });
+    const hook = await renderFinanceHook();
+
+    await expect(act(async () => {
+      await hook.result.current.deleteAccount("foreign-account");
+    })).rejects.toMatchObject({ code: "P0002" });
+
+    expect(backend.tables.accounts).toContainEqual(expect.objectContaining({
+      id: "foreign-account",
+      user_id: "user-2",
+    }));
+    hook.unmount();
+  });
+
+  it("continues creating, editing, and saving transactions for bank accounts", async () => {
+    const hook = await renderFinanceHook();
+    await act(async () => {
+      hook.result.current.setAccounts((current) => [...current, {
+        id: "new-account",
+        name: "Conta nova",
+        institution: "Banco",
+        balance: 250,
+      }]);
+    });
+    await waitFor(() => expect(backend.tables.accounts).toContainEqual(expect.objectContaining({
+      id: "new-account",
+      name: "Conta nova",
+    })));
+
+    await act(async () => {
+      hook.result.current.setAccounts((current) => current.map((item) =>
+        item.id === "new-account" ? { ...item, name: "Conta atualizada", balance: 300 } : item,
+      ));
+    });
+    await waitFor(() => expect(backend.tables.accounts).toContainEqual(expect.objectContaining({
+      id: "new-account",
+      name: "Conta atualizada",
+      balance: 300,
+    })));
+
+    const transaction: Transaction = {
+      id: "new-account-expense",
+      description: "Compra",
+      category: "Outros",
+      transaction_date: "2026-11-05",
+      amount: 15,
+      type: "expense",
+      accountId: "new-account",
+    };
+    act(() => hook.result.current.setTransactions([transaction]));
+    await waitFor(() => expect(backend.tables.transactions).toContainEqual(expect.objectContaining({
+      id: transaction.id,
+      account_id: "new-account",
+    })));
+    hook.unmount();
+  });
+
   it("deletes a cash box without movements", async () => {
     const hook = await renderFinanceHook();
 

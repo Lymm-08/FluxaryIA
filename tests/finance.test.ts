@@ -38,6 +38,28 @@ describe("regras financeiras", () => {
     expect(calculateProjectedBalance(transactions, [account], [])).toBe(1230);
   });
 
+  it("não trata o histórico de uma conta excluída como movimentação sem conta", () => {
+    const archivedExpense = transaction({
+      id: "archived-expense",
+      amount: 125,
+      accountIdSnapshot: "deleted-account",
+      accountNameSnapshot: "Conta encerrada",
+    });
+    const archivedIncome = transaction({
+      id: "archived-income",
+      type: "income",
+      amount: 200,
+      accountIdSnapshot: "deleted-account",
+      accountNameSnapshot: "Conta encerrada",
+    });
+
+    expect(calculateTotals([archivedExpense, archivedIncome], [])).toEqual({
+      income: 200,
+      expenses: 125,
+      balance: 0,
+    });
+  });
+
   it("debita aportes do saldo atual e credita retiradas sem contar como receita ou despesa", () => {
     const deposit = transaction({
       id: "deposit-1",

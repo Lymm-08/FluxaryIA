@@ -60,6 +60,25 @@ describe("detalhes de movimentação", () => {
     expect(screen.getByText("R$ •••••")).toBeTruthy();
   });
 
+  it("identifica a conta original nos detalhes de uma movimentação arquivada", () => {
+    render(
+      <TransactionDetailsModal
+        transaction={{
+          ...pendingExpense,
+          accountIdSnapshot: "closed-account",
+          accountNameSnapshot: "Conta encerrada",
+        }}
+        showValues
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onSettle={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Conta encerrada")).toBeTruthy();
+  });
+
   it("abre o detalhe da movimentação por teclado", () => {
     const onOpen = vi.fn();
     render(<TransactionRow transaction={pendingExpense} showValues onOpen={onOpen} />);

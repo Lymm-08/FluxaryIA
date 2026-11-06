@@ -887,21 +887,28 @@ function FinanceWorkspace({ userId, userEmail, onSendPasswordReset, onSignOut }:
 
   async function removeEntry(type: FinanceEntryType, item: FinanceEntry) {
     if (!item) return;
-    if (type === "account" && finance.transactions.some((transaction) => transaction.accountId === item.id)) {
-      setError("Esta conta tem movimentações vinculadas. Mantenha-a para preservar o histórico financeiro.");
-      return;
-    }
+    const itemName = "name" in item ? item.name : "category" in item ? item.category : "";
     if (type === "card" && finance.transactions.some((transaction) => transaction.creditCardId === item.id)) {
       setError("Este cartão tem compras ou pagamentos no histórico. Remova os lançamentos vinculados antes de excluí-lo.");
       return;
     }
     if (!await askConfirmation({
       title: "Excluir item?",
-      message: `Deseja excluir “${"name" in item ? item.name : "category" in item ? item.category : ""}”? Esta ação não pode ser desfeita.`,
+      message: type === "account"
+        ? `Deseja excluir “${itemName}”? As movimentações permanecerão no histórico com a identificação original da conta.`
+        : `Deseja excluir “${itemName}”? Esta ação não pode ser desfeita.`,
       confirmLabel: "Excluir",
       danger: true,
     })) return;
-    if (type === "account") finance.setAccounts((current) => current.filter((entry) => entry.id !== item.id));
+    if (type === "account") {
+      try {
+        await finance.deleteAccount(item.id);
+        setError("");
+      } catch (reason: unknown) {
+        setError(`Não foi possível excluir a conta preservando o histórico: ${formatErrorDetails(reason, "falha desconhecida")}`);
+      }
+      return;
+    }
     if (type === "card") finance.setCards((current) => current.filter((entry) => entry.id !== item.id));
     if (type === "plan") finance.setPlans((current) => current.filter((entry) => entry.id !== item.id));
     if (type === "goal") finance.setGoals((current) => current.filter((entry) => entry.id !== item.id));
