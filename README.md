@@ -2,7 +2,7 @@
 
 **Gestão financeira pessoal de forma simples, inteligente e organizada.**
 
-<sub>**Projeto em desenvolvimento** 🚧</sub>
+<sub>🚧 **Projeto em desenvolvimento** 🚧</sub>
 
 Fluxary é uma aplicação web de gestão financeira pessoal desenvolvida com o objetivo de tornar o controle do dinheiro mais acessível, intuitivo e organizado.
 
