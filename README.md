@@ -22,59 +22,53 @@ Tela de acesso à plataforma, com autenticação de usuários.
 
 ### 2. Dashboard inicial
 
-Painel principal do Fluxary, com visão geral da área financeira.
-
-![Dashboard inicial](public/01-visao-geral-inicial.png)
-
-### 3. Dashboard com dados
-
-Visualização das informações financeiras e do saldo do usuário.
+Painel principal do Fluxary, com visão geral da área financeira
 
 ![Dashboard com dados](public/02-visao-geral-com-dados.png)
 
-### 4. Movimentações financeiras
+### 3. Movimentações financeiras
 
 Área destinada ao registro e acompanhamento de receitas e despesas.
 
 ![Movimentações](public/03-movimentacoes.png)
 
-### 5. Cartões de crédito
+### 4. Cartões de crédito
 
 Gerenciamento dos cartões de crédito cadastrados na plataforma.
 
 ![Cartões de crédito](public/04-cartoes-de-credito.png)
 
-### 6. Contas bancárias
+### 5. Contas bancárias
 
 Organização e gerenciamento das contas financeiras do usuário.
 
 ![Contas bancárias](public/05-contas-bancarias.png)
 
-### 7. Categorias financeiras
+### 6. Categorias financeiras
 
 Gerenciamento das categorias utilizadas para organizar as movimentações.
 
 ![Categorias financeiras](public/06-categorias-financeiras.png)
 
-### 8. Cadastro de categorias
+### 7. Cadastro de categorias
 
 Interface para criação de categorias personalizadas.
 
 ![Cadastro de categoria](public/07-criar-categoria.png)
 
-### 9. Cadastro de contas
+### 8. Cadastro de contas
 
 Formulário para adicionar novas contas bancárias.
 
 ![Cadastro de conta](public/08-criar-conta.png)
 
-### 10. Cadastro de cartões
+### 9. Cadastro de cartões
 
 Interface para adicionar cartões de crédito à plataforma.
 
 ![Cadastro de cartão](public/09-criar-cartao.png)
 
-### 11. Planejamento mensal
+### 10. Planejamento mensal
 
 Definição de limites de gastos para acompanhar o orçamento mensal.
 
@@ -86,31 +80,31 @@ Acompanhamento e gerenciamento dos objetivos financeiros.
 
 ![Metas financeiras](public/11-editar-meta-financeira.png)
 
-### 13. Caixinhas de economia
+### 12. Caixinhas de economia
 
 Espaço para reservar valores e acompanhar economias.
 
 ![Caixinhas de economia](public/12-caixinhas-de-economia.png)
 
-### 14. Felix — Tela inicial
+### 13. Felix — Tela inicial
 
 Apresentação do assistente financeiro com inteligência artificial.
 
 ![Tela inicial do Felix](public/13-chat-felix-tela-inicial.png)
 
-### 15. Felix — Chat completo
+### 14. Felix — Chat completo
 
 Interface de conversação com o assistente financeiro.
 
 ![Chat completo do Felix](public/14-chat-felix-pagina-completa.png)
 
-### 16. Felix — Resposta financeira
+### 15. Felix — Resposta financeira
 
 Exemplo de interação e orientação financeira fornecida pelo assistente.
 
 ![Resposta financeira do Felix](public/15-chat-felix-resposta-financeira.png)
 
-### 17. Configurações
+### 16. Configurações
 
 Área de gerenciamento das preferências e configurações da conta.
 
