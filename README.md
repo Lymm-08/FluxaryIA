@@ -14,63 +14,107 @@ O projeto está sendo desenvolvido com foco em usabilidade, segurança, organiza
 
 ## Demonstração visual
 
-### Visão geral e acesso
+### 1. Tela de login
 
-<table>
-<tr>
-<td width="50%"><img src="public/tela-de-login.png" width="100%" alt="Tela de login do Fluxary"></td>
-<td width="50%"><img src="public/01-visao-geral-inicial.png" width="100%" alt="Dashboard inicial"></td>
-</tr>
-<tr>
-<td><img src="public/02-visao-geral-com-dados.png" width="100%" alt="Dashboard com dados"></td>
-<td><img src="public/03-movimentacoes.png" width="100%" alt="Movimentações"></td>
-</tr>
-</table>
+Tela de acesso à plataforma, com autenticação de usuários.
 
-### Gestão financeira
+![Tela de login](public/tela-de-login.png)
 
-<table>
-<tr>
-<td width="50%"><img src="public/04-cartoes-de-credito.png" width="100%" alt="Cartões de crédito"></td>
-<td width="50%"><img src="public/05-contas-bancarias.png" width="100%" alt="Contas bancárias"></td>
-</tr>
-<tr>
-<td><img src="public/06-categorias-financeiras.png" width="100%" alt="Categorias financeiras"></td>
-<td><img src="public/07-criar-categoria.png" width="100%" alt="Cadastro de categoria"></td>
-</tr>
-</table>
+### 2. Dashboard inicial
 
-### Cadastro e planejamento financeiro
+Painel principal do Fluxary, com visão geral da área financeira.
 
-<table>
-<tr>
-<td width="50%"><img src="public/08-criar-conta.png" width="100%" alt="Cadastro de conta"></td>
-<td width="50%"><img src="public/09-criar-cartao.png" width="100%" alt="Cadastro de cartão"></td>
-</tr>
-<tr>
-<td><img src="public/10-planejamento-mensal.png" width="100%" alt="Planejamento mensal"></td>
-<td><img src="public/11-editar-meta-financeira.png" width="100%" alt="Metas financeiras"></td>
-</tr>
-</table>
+![Dashboard inicial](public/01-visao-geral-inicial.png)
 
-### Felix — Assistente financeiro com IA
+### 3. Dashboard com dados
 
-<table>
-<tr>
-<td width="50%"><img src="public/12-caixinhas-de-economia.png" width="100%" alt="Caixinhas de economia"></td>
-<td width="50%"><img src="public/13-chat-felix-tela-inicial.png" width="100%" alt="Tela inicial do Felix"></td>
-</tr>
-<tr>
-<td><img src="public/14-chat-felix-pagina-completa.png" width="100%" alt="Página completa do Felix"></td>
-<td><img src="public/15-chat-felix-resposta-financeira.png" width="100%" alt="Resposta financeira do Felix"></td>
-</tr>
-</table>
+Visualização das informações financeiras e do saldo do usuário.
 
-### Configurações
+![Dashboard com dados](public/02-visao-geral-com-dados.png)
 
-<p align="center">
-<img src="public/16-configuracoes.png" width="70%" alt="Configurações do Fluxary">
-</p>
+### 4. Movimentações financeiras
+
+Área destinada ao registro e acompanhamento de receitas e despesas.
+
+![Movimentações](public/03-movimentacoes.png)
+
+### 5. Cartões de crédito
+
+Gerenciamento dos cartões de crédito cadastrados na plataforma.
+
+![Cartões de crédito](public/04-cartoes-de-credito.png)
+
+### 6. Contas bancárias
+
+Organização e gerenciamento das contas financeiras do usuário.
+
+![Contas bancárias](public/05-contas-bancarias.png)
+
+### 7. Categorias financeiras
+
+Gerenciamento das categorias utilizadas para organizar as movimentações.
+
+![Categorias financeiras](public/06-categorias-financeiras.png)
+
+### 8. Cadastro de categorias
+
+Interface para criação de categorias personalizadas.
+
+![Cadastro de categoria](public/07-criar-categoria.png)
+
+### 9. Cadastro de contas
+
+Formulário para adicionar novas contas bancárias.
+
+![Cadastro de conta](public/08-criar-conta.png)
+
+### 10. Cadastro de cartões
+
+Interface para adicionar cartões de crédito à plataforma.
+
+![Cadastro de cartão](public/09-criar-cartao.png)
+
+### 11. Planejamento mensal
+
+Definição de limites de gastos para acompanhar o orçamento mensal.
+
+![Planejamento mensal](public/10-planejamento-mensal.png)
+
+### 12. Metas financeiras
+
+Acompanhamento e gerenciamento dos objetivos financeiros.
+
+![Metas financeiras](public/11-editar-meta-financeira.png)
+
+### 13. Caixinhas de economia
+
+Espaço para reservar valores e acompanhar economias.
+
+![Caixinhas de economia](public/12-caixinhas-de-economia.png)
+
+### 14. Felix — Tela inicial
+
+Apresentação do assistente financeiro com inteligência artificial.
+
+![Tela inicial do Felix](public/13-chat-felix-tela-inicial.png)
+
+### 15. Felix — Chat completo
+
+Interface de conversação com o assistente financeiro.
+
+![Chat completo do Felix](public/14-chat-felix-pagina-completa.png)
+
+### 16. Felix — Resposta financeira
+
+Exemplo de interação e orientação financeira fornecida pelo assistente.
+
+![Resposta financeira do Felix](public/15-chat-felix-resposta-financeira.png)
+
+### 17. Configurações
+
+Área de gerenciamento das preferências e configurações da conta.
+
+![Configurações](public/16-configuracoes.png)
 
 ---
 
