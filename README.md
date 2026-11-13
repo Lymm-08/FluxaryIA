@@ -74,7 +74,7 @@ Definição de limites de gastos para acompanhar o orçamento mensal.
 
 ![Planejamento mensal](public/10-planejamento-mensal.png)
 
-### 12. Metas financeiras
+### 12. Editar metas financeiras
 
 Acompanhamento e gerenciamento dos objetivos financeiros.
 
