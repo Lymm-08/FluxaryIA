@@ -22,8 +22,6 @@ O projeto está sendo desenvolvido com foco em usabilidade, segurança, organiza
 
 A tela inicial apresenta a visão geral das informações financeiras e permite acompanhar os principais dados da conta.
 
-![Dashboard inicial](public/01-visao-geral-inicial.png)
-
 ![Dashboard com dados](public/02-visao-geral-com-dados.png)
 
 ### Funcionalidades financeiras
