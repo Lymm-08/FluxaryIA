@@ -1,54 +1,346 @@
-# Fluxary.ia
+# Fluxary
 
-Aplicação responsiva de organização financeira pessoal, em português brasileiro. O projeto oferece lançamentos, categorias, contas, cartões, planejamento, metas, histórico mensal, chatbot financeiro, modo escuro e autenticação.
+**Gestão financeira pessoal de forma simples, inteligente e organizada.**
+
+<sub>Projeto em desenvolvimento 🚧</sub>
+
+Fluxary é uma aplicação web de gestão financeira pessoal desenvolvida com o objetivo de tornar o controle do dinheiro mais acessível, intuitivo e organizado.
+
+A plataforma reúne ferramentas para acompanhar receitas e despesas, administrar contas bancárias, controlar cartões de crédito, estabelecer metas financeiras e planejar gastos mensais. Também conta com um assistente financeiro integrado com inteligência artificial, pensado para ajudar os usuários a compreender seus hábitos de consumo e tomar decisões financeiras mais conscientes.
+
+O projeto está sendo desenvolvido com foco em usabilidade, segurança, organização do código e experiência do usuário.
+
+---
+
+## Demonstração visual
+
+### Tela de acesso
+
+![Tela de login do Fluxary](public/tela-de-login.png)
+
+### Dashboard
+
+A tela inicial apresenta a visão geral das informações financeiras e permite acompanhar os principais dados da conta.
+
+![Dashboard inicial](public/01-visao-geral-inicial.png)
+
+![Dashboard com dados](public/02-visao-geral-com-dados.png)
+
+### Funcionalidades financeiras
+
+**Movimentações financeiras**
+
+![Movimentações](public/03-movimentacoes.png)
+
+**Cartões de crédito**
+
+![Cartões de crédito](public/04-cartoes-de-credito.png)
+
+**Contas bancárias**
+
+![Contas bancárias](public/05-contas-bancarias.png)
+
+**Categorias financeiras**
+
+![Categorias financeiras](public/06-categorias-financeiras.png)
+
+**Cadastro de categoria**
+
+![Criar categoria](public/07-criar-categoria.png)
+
+**Cadastro de conta**
+
+![Criar conta](public/08-criar-conta.png)
+
+**Cadastro de cartão**
+
+![Criar cartão](public/09-criar-cartao.png)
+
+### Planejamento financeiro
+
+**Planejamento mensal**
+
+![Planejamento mensal](public/10-planejamento-mensal.png)
+
+**Metas financeiras**
+
+![Editar meta financeira](public/11-editar-meta-financeira.png)
+
+**Caixinhas de economia**
+
+![Caixinhas de economia](public/12-caixinhas-de-economia.png)
+
+### Assistente financeiro com IA
+
+O Fluxary conta com Felix, um assistente financeiro com identidade visual própria, desenvolvido para oferecer uma experiência de interação mais próxima e intuitiva.
+
+![Chat Felix](public/13-chat-felix-tela-inicial.png)
+
+![Página completa do Chat Felix](public/14-chat-felix-pagina-completa.png)
+
+![Resposta financeira do Felix](public/15-chat-felix-resposta-financeira.png)
+
+### Configurações
+
+![Configurações](public/16-configuracoes.png)
+
+---
+
+## Funcionalidades desenvolvidas
+
+As funcionalidades abaixo já possuem implementação no projeto, embora algumas ainda estejam passando por validações e aprimoramentos.
+
+- **Autenticação de usuários:** cadastro, login, recuperação de senha e confirmação de e-mail.
+- **Login com Google:** autenticação por provedor externo.
+- **Dashboard financeiro:** visualização geral das informações financeiras.
+- **Contas bancárias:** cadastro, gerenciamento e organização de contas.
+- **Movimentações:** registro e acompanhamento de receitas e despesas.
+- **Categorias financeiras:** organização das movimentações por categorias.
+- **Cartões de crédito:** gerenciamento de cartões e estrutura de compras e parcelas.
+- **Planejamento mensal:** definição de limites de gastos por categoria.
+- **Metas financeiras:** criação e acompanhamento de objetivos.
+- **Caixinhas de economia:** organização de valores reservados e histórico de movimentações.
+- **Assistente financeiro com IA:** chat para interação e análise de questões relacionadas às finanças.
+- **Configurações:** gerenciamento de preferências da conta.
+- **Exclusão de conta:** implementação de fluxo de solicitação e preservação de histórico financeiro.
+
+## Tecnologias utilizadas
+
+| Tecnologia | Aplicação no projeto |
+|---|---|
+| React | Construção da interface |
+| TypeScript | Tipagem e organização do código |
+| Vite | Ambiente de desenvolvimento e build |
+| HTML5 | Estrutura da aplicação |
+| CSS3 | Estilização e responsividade |
+| Python | Desenvolvimento dos serviços de backend |
+| Supabase | Backend, autenticação e integração com banco de dados |
+| PostgreSQL | Banco de dados relacional |
+| Git e GitHub | Versionamento e controle do código |
+| Vercel | Plataforma de publicação da aplicação |
+| Inteligência Artificial | Assistente financeiro integrado |
+
+## Arquitetura e organização
+
+O projeto possui uma estrutura dividida entre frontend, backend, banco de dados e testes, buscando manter a organização e facilitar a manutenção e evolução da aplicação.
+
+```text
+fluxary/
+│
+├── api/
+│   ├── account_deletion.py
+│   ├── ai_provider.py
+│   ├── chat.py
+│   └── delete_account.py
+│
+├── public/
+│   ├── mascotes/
+│   ├── 01-visao-geral-inicial.png
+│   ├── 02-visao-geral-com-dados.png
+│   ├── 03-movimentacoes.png
+│   ├── 04-cartoes-de-credito.png
+│   ├── 05-contas-bancarias.png
+│   ├── 06-categorias-financeiras.png
+│   ├── 07-criar-categoria.png
+│   ├── 08-criar-conta.png
+│   ├── 09-criar-cartao.png
+│   ├── 10-planejamento-mensal.png
+│   ├── 11-editar-meta-financeira.png
+│   ├── 12-caixinhas-de-economia.png
+│   ├── 13-chat-felix-tela-inicial.png
+│   ├── 14-chat-felix-pagina-completa.png
+│   ├── 15-chat-felix-resposta-financeira.png
+│   ├── 16-configuracoes.png
+│   ├── login-artwork.svg
+│   └── tela-de-login.png
+│
+├── src/
+│   ├── components/
+│   ├── css/
+│   │   ├── pages/
+│   │   ├── shared/
+│   │   └── index.css
+│   ├── data/
+│   │   ├── banks.ts
+│   │   └── categories.ts
+│   ├── hooks/
+│   │   └── useFinanceData.ts
+│   ├── lib/
+│   │   ├── auth-storage.ts
+│   │   ├── auth-tab.ts
+│   │   ├── database.types.ts
+│   │   └── supabase.ts
+│   ├── pages/
+│   ├── services/
+│   │   ├── accounts.ts
+│   │   ├── accountDeletion.ts
+│   │   └── chat.ts
+│   ├── types/
+│   │   └── finance.ts
+│   ├── utils/
+│   ├── App.tsx
+│   ├── main.tsx
+│   └── vite-env.d.ts
+│
+├── supabase/
+│   └── migrations/
+│
+├── tests/
+│   ├── auth-page.test.tsx
+│   ├── auth-provider.test.tsx
+│   ├── auth-storage.test.ts
+│   ├── auth-tab.test.ts
+│   ├── cash-boxes.test.tsx
+│   ├── chat-page.test.tsx
+│   ├── errors.test.ts
+│   ├── finance.test.ts
+│   ├── planning.test.tsx
+│   ├── settings-page.test.tsx
+│   ├── supabase-session.test.ts
+│   ├── test_ai_provider.py
+│   ├── test_chat_api.py
+│   ├── test_delete_account.py
+│   ├── transaction-details.test.tsx
+│   └── use-finance-data.test.ts
+│
+├── .env.example
+├── .gitignore
+├── BANCO_DE_DADOS_COMPLETO.sql
+├── TESTES_BANCO_DE_DADOS.sql
+├── index.html
+├── package.json
+├── package-lock.json
+├── requirements.txt
+├── README.md
+├── tsconfig.json
+└── vite.config.ts
+```
+
+*Observação: a estrutura acima representa a organização atual do projeto em suas principais pastas e arquivos. Alguns diretórios possuem arquivos adicionais.*
+
+## Banco de dados e segurança
+
+O Fluxary utiliza Supabase com PostgreSQL para armazenar e gerenciar os dados da aplicação.
+
+A estrutura do banco contempla entidades como:
+
+- Perfis e configurações de usuários.
+- Contas bancárias.
+- Transações financeiras.
+- Categorias.
+- Cartões de crédito e compras parceladas.
+- Planejamentos e limites mensais.
+- Metas financeiras.
+- Caixinhas de economia e depósitos.
+- Conversas e mensagens do assistente com IA.
+- Eventos de utilização da IA.
+- Solicitações de exclusão de contas.
+
+### Segurança implementada
+
+- Row Level Security (RLS) nas tabelas que armazenam dados dos usuários.
+- Políticas de acesso baseadas na identificação do usuário autenticado.
+- Separação dos dados entre diferentes usuários.
+- Controle de utilização do assistente com IA.
+- Gerenciamento de sessões e sincronização de autenticação entre abas.
+- Operações específicas para preservação do histórico financeiro durante determinadas exclusões.
+
+A segurança do banco e as regras de acesso estão sendo continuamente verificadas.
+
+## Testes e validações
+
+O projeto possui uma estrutura de testes automatizados para validar diferentes partes da aplicação.
+
+Entre as áreas contempladas estão:
+
+- Autenticação e gerenciamento de sessões.
+- Login e provedores de autenticação.
+- Armazenamento e sincronização entre abas.
+- Movimentações financeiras.
+- Gerenciamento de contas.
+- Planejamento mensal.
+- Caixinhas de economia.
+- Assistente financeiro.
+- Configurações.
+- Exclusão de conta.
+- Integração com Supabase.
+
+São utilizados testes com arquivos TypeScript/TSX e Python, incluindo validações de funcionalidades do frontend e dos serviços de backend.
+
+A suíte de testes e as validações de integração continuam em evolução.
+
+---
+
+## Próximas etapas
+
+O Fluxary ainda está em desenvolvimento. As próximas etapas incluem:
+
+- [ ] Finalizar a auditoria e validação geral do banco de dados.
+- [ ] Realizar testes integrados de todas as funcionalidades.
+- [ ] Aprimorar a responsividade em diferentes dispositivos.
+- [ ] Revisar e aperfeiçoar a experiência de uso.
+- [ ] Finalizar o fluxo de exclusão de conta com confirmação por e-mail.
+- [ ] Configurar o domínio próprio e o remetente personalizado de e-mail.
+- [ ] Realizar testes completos de publicação e produção.
+- [ ] Aprimorar o assistente financeiro e suas capacidades de análise.
+- [ ] Revisar a segurança e o tratamento de erros.
+- [ ] Publicar a versão estável da aplicação.
+
+Novas funcionalidades e melhorias poderão ser adicionadas durante o desenvolvimento.
 
 ## Executar localmente
 
-1. Instale Node.js 20.19+ ou 22.12+.
-2. Execute `npm install`.
-3. Copie `.env.example` para `.env` e preencha as credenciais públicas do seu projeto Supabase.
-4. Configure `GEMINI_API_KEY` somente no ambiente do backend (Vercel ou `vercel env pull`).
-5. Execute `vercel dev` para testar também a função Python `/api/chat`; `npm run dev` inicia apenas o frontend.
+### Pré-requisitos
 
-O acesso é exclusivo para contas autenticadas. Sem Supabase configurado, o login permanece indisponível e nenhuma funcionalidade financeira fica acessível.
+- Node.js e npm.
+- Python.
+- Conta e projeto Supabase.
+- Variáveis de ambiente necessárias para a aplicação.
 
-Cada aba do navegador mantém uma sessão Supabase isolada, inclusive ao duplicar uma aba. “Lembrar de mim” guarda a sessão e registra o identificador da aba para que uma aba fechada possa recuperar a sessão ao ser reaberta. A recuperação coordena as abas com Web Locks ou, quando indisponível, com leases transacionais no IndexedDB; eventos de `storage` complementam a detecção quando `BroadcastChannel` não existe. Se houver várias sessões lembradas e fechadas, cada nova aba recupera uma sessão inativa por vez; sessões que ainda estão em abas abertas nunca são reutilizadas. Sair remove somente a sessão lembrada da aba atual. Após a atualização, sessões salvas pelo formato anterior podem exigir um novo login na primeira recuperação.
+### Instalação
 
-## Configuração do Supabase
+Clone o repositório:
 
-Para um projeto Supabase novo, execute uma única vez `BANCO_DE_DADOS_COMPLETO.sql` no SQL Editor. Esse script consolidado cria as tabelas, índices, restrições, triggers, permissões e políticas RLS sem exigir a execução dos arquivos da pasta `migrations`. `TESTES_BANCO_DE_DADOS.sql` contém verificações pós-instalação e um teste RLS transacional.
+```bash
+git clone https://github.com/Lymm-08/FluxaryIA.git
+```
 
-Para um projeto Supabase existente, aplique também `supabase/migrations/20261104000000_fluxary_ai_chat.sql` no SQL Editor para criar o histórico, políticas RLS e limites de uso do chat.
+Entre na pasta:
 
-Para habilitar a solicitação e confirmação de exclusão de conta, aplique as migrações `supabase/migrations/20261104180000_confirm_fluxary_account_deletion.sql` e `supabase/migrations/20261104220000_fluxary_account_deletion_code.sql`, nesta ordem. Em projetos existentes que já aplicaram a primeira migração, aplique somente a segunda. As migrações criam códigos de uso único com validade de 30 minutos, bloqueiam o código após 5 tentativas incorretas, limitam solicitações e permitem a limpeza segura dos dados durante a exclusão no Supabase Auth. Links de confirmação enviados antes da atualização continuam aceitos até expirarem.
+```bash
+cd FluxaryIA
+```
 
-Para permitir excluir cofrinhos e contas bancárias preservando as movimentações, aplique `supabase/migrations/20261105183000_cash_box_history_preservation.sql` e depois `supabase/migrations/20261106090000_account_history_preservation.sql`. Em projetos existentes, aplique-as após as migrações de cofrinhos `20261103020000_cash_boxes.sql` e `20261103030000_cash_box_withdrawals.sql`. Em projetos novos instalados pelo script consolidado, aplique também essas duas migrações em ordem para habilitar a preservação no histórico.
+Instale as dependências do frontend:
 
-O frontend usa somente a URL do projeto e a chave pública `anon`/`publishable`. **Nunca** inclua a chave `service_role`, senha do banco ou outros segredos em variáveis `VITE_*`, no código do navegador ou no repositório. As políticas RLS do PostgreSQL isolam os registros por usuário.
+```bash
+npm install
+```
 
-Na Vercel, acesse **Project → Settings → Environment Variables** e configure `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (ou `VITE_SUPABASE_ANON_KEY`) e `GEMINI_API_KEY` nos ambientes **Production** e **Preview**. Crie/consulte a chave em [Google AI Studio](https://aistudio.google.com/apikey). `GEMINI_API_KEY` é secreta, usada somente pela função Python e nunca deve ter prefixo `VITE_`. Configure também `AI_PROVIDER=gemini` e `GEMINI_MODEL=gemini-3.5-flash-lite`; o modelo Flash-Lite está disponível no nível gratuito segundo a tabela atual de preços do Gemini, sujeito aos limites de uso do projeto. Se sua conta ainda tiver acesso ao Gemini 2.5 Flash, pode selecionar `GEMINI_MODEL=gemini-2.5-flash`; o modelo está depreciado e o acesso está limitado a usuários existentes. Para voltar ao provedor anterior, configure `AI_PROVIDER=openai` e `OPENAI_API_KEY` no backend. O backend usa a sessão do usuário e a chave pública Supabase para consultar dados sob RLS; não requer `service_role`. Cada conta Fluxary pode enviar até 5 mensagens por minuto e 20 por dia. O chatbot envia ao provedor selecionado um resumo financeiro e até 30 movimentações recentes para gerar respostas.
+Instale as dependências do backend:
 
-Para o e-mail de exclusão, cadastre em **Project → Settings → Environment Variables** da Vercel: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` e `RESEND_FROM_EMAIL`. São variáveis somente de backend (sem prefixo `VITE_`); configure em **Production** e **Preview** e faça novo deploy após aplicar as migrações e salvar as variáveis. `SUPABASE_SERVICE_ROLE_KEY` é a chave administrativa secreta do projeto Supabase e nunca deve ser exposta no navegador. `RESEND_API_KEY` é criada no painel Resend. No Resend, verifique o domínio de envio e use em `RESEND_FROM_EMAIL` um remetente desse domínio, por exemplo `Fluxary <conta@seudominio.com>` (substitua pelo domínio que você verificou). O backend envia o código pela API oficial do Resend; não é necessário configurar SMTP no Supabase. Se o Resend retornar erro, a solicitação mostra falha e a conta permanece ativa. A aplicação atual não faz upload nem usa buckets de Storage; a exclusão também remove objetos cujo `owner_id` seja a conta.
+```bash
+pip install -r requirements.txt
+```
 
-## Persistência e dados existentes
+Configure as variáveis de ambiente utilizando o arquivo `.env.example` como referência.
 
-Depois de preencher as variáveis do projeto Supabase e executar o esquema SQL, os dados financeiros são carregados e sincronizados com a conta autenticada no PostgreSQL hospedado. Sem essa configuração, o acesso permanece bloqueado. O app não oferece acesso como visitante e não usa `localStorage` como armazenamento financeiro. Dados locais antigos não são importados ou apagados automaticamente.
+Inicie o ambiente de desenvolvimento do frontend:
 
-## Funcionalidades
+```bash
+npm run dev
+```
 
-- Cadastro, login, confirmação de e-mail, recuperação e troca de senha.
-- Receitas, despesas e histórico mensal.
-- Categorias, contas, cartões, compras parceladas e pagamento de fatura.
-- Planejamento, orçamento mensal, metas e preferências da tela inicial.
-- Chatbot financeiro com contexto das movimentações e histórico por usuário.
-    - Cada conta pode enviar até 5 mensagens por minuto e 20 por dia.
-    - Para responder, envia ao provedor escolhido um resumo financeiro e até 30 movimentações recentes.
-    - O histórico do chat é mantido por usuário.
-    -   Além dos limites do Fluxary, o uso do modelo está sujeito aos limites do provedor configurado.
-- Tema claro/escuro e navegação responsiva.
+*Os serviços Python devem ser executados conforme a configuração de backend do projeto.*
 
-O esquema representa os recursos implementados hoje. Subcategorias, recorrências, transferências e favoritos não possuem telas nem operações no app atual e, por isso, não são tabelas incluídas como se já fossem funcionalidades disponíveis.
+## Status do projeto
 
-## Build
+<sub>Em desenvolvimento ativo — Novembro de 2026.</sub>
 
-Execute `npm run build` para validar o TypeScript e gerar a aplicação em `dist/`.
+O Fluxary é um projeto autoral em construção, no qual estão sendo aplicados conhecimentos de desenvolvimento frontend e backend, integração com banco de dados, autenticação, segurança, testes automatizados, versionamento e integração de inteligência artificial.
+
+O objetivo é evoluir a aplicação até uma versão estável, segura e disponível para utilização em diferentes dispositivos.
+
+---
+
+**Desenvolvido por [Lymm-08](https://github.com/Lymm-08).**
