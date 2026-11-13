@@ -40,6 +40,7 @@ O projeto está sendo desenvolvido com foco em usabilidade, segurança, organiza
 &#x20; \</tr>
 \</table>
 
+<<<<<<< HEAD
 ### Cadastro e planejamento financeiro
 
 \<table>
@@ -52,6 +53,9 @@ O projeto está sendo desenvolvido com foco em usabilidade, segurança, organiza
 &#x20;   \<td>\<img src="public/11-editar-meta-financeira.png" width="100%" alt="Metas financeiras">\</td>
 &#x20; \</tr>
 \</table>
+=======
+![Dashboard com dados](public/02-visao-geral-com-dados.png)
+>>>>>>> origin/main
 
 ### Felix — Assistente financeiro com IA
 
