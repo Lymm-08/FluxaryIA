@@ -1,0 +1,7 @@
+[
+  "tests/test_chat_api.py::ChatApiTests::test_conversation_id_requires_uuid_format",
+  "tests/test_chat_api.py::ChatApiTests::test_http_diagnostics_only_return_allowlisted_code_and_category",
+  "tests/test_chat_api.py::ChatApiTests::test_month_window_crosses_year_boundary",
+  "tests/test_chat_api.py::ChatApiTests::test_summary_separates_spending_from_card_payments_and_planned_movements",
+  "tests/test_chat_api.py::ChatApiTests::test_supabase_rate_limit_is_identified_without_logging_response_body"
+]
