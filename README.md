@@ -2,7 +2,7 @@
 
 **Gestão financeira pessoal de forma simples, inteligente e organizada.**
 
-\<sub>**Projeto em desenvolvimento** 🚧\</sub>
+<sub>**Projeto em desenvolvimento** 🚧</sub>
 
 Fluxary é uma aplicação web de gestão financeira pessoal desenvolvida com o objetivo de tornar o controle do dinheiro mais acessível, intuitivo e organizado.
 
@@ -16,65 +16,61 @@ O projeto está sendo desenvolvido com foco em usabilidade, segurança, organiza
 
 ### Visão geral e acesso
 
-\<table>
-&#x20; \<tr>
-&#x20;   \<td width="50%">\<img src="public/tela-de-login.png" width="100%" alt="Tela de login do Fluxary">\</td>
-&#x20;   \<td width="50%">\<img src="public/01-visao-geral-inicial.png" width="100%" alt="Dashboard inicial">\</td>
-&#x20; \</tr>
-&#x20; \<tr>
-&#x20;   \<td>\<img src="public/02-visao-geral-com-dados.png" width="100%" alt="Dashboard com dados">\</td>
-&#x20;   \<td>\<img src="public/03-movimentacoes.png" width="100%" alt="Movimentações">\</td>
-&#x20; \</tr>
-\</table>
+<table>
+<tr>
+<td width="50%"><img src="public/tela-de-login.png" width="100%" alt="Tela de login do Fluxary"></td>
+<td width="50%"><img src="public/01-visao-geral-inicial.png" width="100%" alt="Dashboard inicial"></td>
+</tr>
+<tr>
+<td><img src="public/02-visao-geral-com-dados.png" width="100%" alt="Dashboard com dados"></td>
+<td><img src="public/03-movimentacoes.png" width="100%" alt="Movimentações"></td>
+</tr>
+</table>
 
 ### Gestão financeira
 
-\<table>
-&#x20; \<tr>
-&#x20;   \<td width="50%">\<img src="public/04-cartoes-de-credito.png" width="100%" alt="Cartões de crédito">\</td>
-&#x20;   \<td width="50%">\<img src="public/05-contas-bancarias.png" width="100%" alt="Contas bancárias">\</td>
-&#x20; \</tr>
-&#x20; \<tr>
-&#x20;   \<td>\<img src="public/06-categorias-financeiras.png" width="100%" alt="Categorias financeiras">\</td>
-&#x20;   \<td>\<img src="public/07-criar-categoria.png" width="100%" alt="Cadastro de categoria">\</td>
-&#x20; \</tr>
-\</table>
+<table>
+<tr>
+<td width="50%"><img src="public/04-cartoes-de-credito.png" width="100%" alt="Cartões de crédito"></td>
+<td width="50%"><img src="public/05-contas-bancarias.png" width="100%" alt="Contas bancárias"></td>
+</tr>
+<tr>
+<td><img src="public/06-categorias-financeiras.png" width="100%" alt="Categorias financeiras"></td>
+<td><img src="public/07-criar-categoria.png" width="100%" alt="Cadastro de categoria"></td>
+</tr>
+</table>
 
-<<<<<<< HEAD
 ### Cadastro e planejamento financeiro
 
-\<table>
-&#x20; \<tr>
-&#x20;   \<td width="50%">\<img src="public/08-criar-conta.png" width="100%" alt="Cadastro de conta">\</td>
-&#x20;   \<td width="50%">\<img src="public/09-criar-cartao.png" width="100%" alt="Cadastro de cartão">\</td>
-&#x20; \</tr>
-&#x20; \<tr>
-&#x20;   \<td>\<img src="public/10-planejamento-mensal.png" width="100%" alt="Planejamento mensal">\</td>
-&#x20;   \<td>\<img src="public/11-editar-meta-financeira.png" width="100%" alt="Metas financeiras">\</td>
-&#x20; \</tr>
-\</table>
-=======
-![Dashboard com dados](public/02-visao-geral-com-dados.png)
->>>>>>> origin/main
+<table>
+<tr>
+<td width="50%"><img src="public/08-criar-conta.png" width="100%" alt="Cadastro de conta"></td>
+<td width="50%"><img src="public/09-criar-cartao.png" width="100%" alt="Cadastro de cartão"></td>
+</tr>
+<tr>
+<td><img src="public/10-planejamento-mensal.png" width="100%" alt="Planejamento mensal"></td>
+<td><img src="public/11-editar-meta-financeira.png" width="100%" alt="Metas financeiras"></td>
+</tr>
+</table>
 
 ### Felix — Assistente financeiro com IA
 
-\<table>
-&#x20; \<tr>
-&#x20;   \<td width="50%">\<img src="public/12-caixinhas-de-economia.png" width="100%" alt="Caixinhas de economia">\</td>
-&#x20;   \<td width="50%">\<img src="public/13-chat-felix-tela-inicial.png" width="100%" alt="Tela inicial do Felix">\</td>
-&#x20; \</tr>
-&#x20; \<tr>
-&#x20;   \<td>\<img src="public/14-chat-felix-pagina-completa.png" width="100%" alt="Página completa do Felix">\</td>
-&#x20;   \<td>\<img src="public/15-chat-felix-resposta-financeira.png" width="100%" alt="Resposta financeira do Felix">\</td>
-&#x20; \</tr>
-\</table>
+<table>
+<tr>
+<td width="50%"><img src="public/12-caixinhas-de-economia.png" width="100%" alt="Caixinhas de economia"></td>
+<td width="50%"><img src="public/13-chat-felix-tela-inicial.png" width="100%" alt="Tela inicial do Felix"></td>
+</tr>
+<tr>
+<td><img src="public/14-chat-felix-pagina-completa.png" width="100%" alt="Página completa do Felix"></td>
+<td><img src="public/15-chat-felix-resposta-financeira.png" width="100%" alt="Resposta financeira do Felix"></td>
+</tr>
+</table>
 
 ### Configurações
 
-\<p align="center">
-&#x20; \<img src="public/16-configuracoes.png" width="70%" alt="Configurações do Fluxary">
-\</p>
+<p align="center">
+<img src="public/16-configuracoes.png" width="70%" alt="Configurações do Fluxary">
+</p>
 
 ---
 
@@ -98,19 +94,19 @@ As funcionalidades abaixo já possuem implementação no projeto, embora algumas
 
 ## Tecnologias utilizadas
 
-| Tecnologia              | Aplicação no projeto                                  |
-| ----------------------- | ----------------------------------------------------- |
-| React                   | Construção da interface                               |
-| TypeScript              | Tipagem e organização do código                       |
-| Vite                    | Ambiente de desenvolvimento e build                   |
-| HTML5                   | Estrutura da aplicação                                |
-| CSS3                    | Estilização e responsividade                          |
-| Python                  | Desenvolvimento dos serviços de backend               |
-| Supabase                | Backend, autenticação e integração com banco de dados |
-| PostgreSQL              | Banco de dados relacional                             |
-| Git e GitHub            | Versionamento e controle do código                    |
-| Vercel                  | Plataforma de publicação da aplicação                 |
-| Inteligência Artificial | Assistente financeiro integrado                       |
+| Tecnologia | Aplicação no projeto |
+|---|---|
+| React | Construção da interface |
+| TypeScript | Tipagem e organização do código |
+| Vite | Ambiente de desenvolvimento e build |
+| HTML5 | Estrutura da aplicação |
+| CSS3 | Estilização e responsividade |
+| Python | Desenvolvimento dos serviços de backend |
+| Supabase | Backend, autenticação e integração com banco de dados |
+| PostgreSQL | Banco de dados relacional |
+| Git e GitHub | Versionamento e controle do código |
+| Vercel | Plataforma de publicação da aplicação |
+| Inteligência Artificial | Assistente financeiro integrado |
 
 ## Arquitetura e organização
 
@@ -327,7 +323,7 @@ npm run dev
 
 ## Status do projeto
 
-\<sub>Em desenvolvimento ativo — Novembro de 2026.\</sub>
+<sub>Em desenvolvimento ativo — Novembro de 2026.</sub>
 
 O Fluxary é um projeto autoral em construção, no qual estão sendo aplicados conhecimentos de desenvolvimento frontend e backend, integração com banco de dados, autenticação, segurança, testes automatizados, versionamento e integração de inteligência artificial.
 
